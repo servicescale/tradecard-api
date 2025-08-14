@@ -1,0 +1,17 @@
+### Crawl Website
+GET {{baseUrl}}/api/crawl?url={{testSiteUrl}}
+
+### Lookup ABN
+GET {{baseUrl}}/api/lookup-abn?search={{testSearch}}
+
+### Create Profile
+GET {{baseUrl}}/api/create-profile?url={{testSiteUrl}}
+
+### Enrich Profile
+GET {{baseUrl}}/api/enrich-profile?slug={{testSlug}}
+
+### Update Profile
+GET {{baseUrl}}/api/update-profile?id={{testPostId}}&url={{testSiteUrl}}
+
+### Delete Profile
+GET {{baseUrl}}/api/delete-profile?id={{testPostId}}

@@ -1,0 +1,16 @@
+{
+  "name": "tradecard-service",
+  "version": "1.0.0",
+  "description": "Vercel API service for TradeCard profile orchestration",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step needed'",
+    "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "yaml": "^2.4.1"
+  },
+  "type": "module"
+}
