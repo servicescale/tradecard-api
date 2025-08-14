@@ -1,4 +1,4 @@
-// See chat history for full endpoint implementationexport default async function handler(req, res) {
+export default async function handler(req, res) {
   const input = req.query.search;
   if (!input) return res.status(400).json({ error: 'Missing ?search=' });
 
