@@ -1,9 +1,15 @@
 // See chat history for full endpoint implementationimport cheerio from 'cheerio';
 
 export default async function handler(req, res) {
-  const url = req.query.url;
-  if (!url || !/^https?:\/\//i.test(url)) {
-    return res.status(400).json({ error: 'Invalid URL' });
+  let url = req.query.url;
+
+  if (!url) {
+    return res.status(400).json({ error: 'Missing url parameter' });
+  }
+
+  // If missing protocol, prepend https://
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
   }
 
   try {
