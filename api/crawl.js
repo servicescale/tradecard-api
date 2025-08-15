@@ -1,41 +1,26 @@
-import fetch from 'node-fetch';
-import cheerio from 'cheerio';
-
 export default async function handler(req, res) {
-  const url = req.query.url;
-
-  if (!url || !/^https?:\/\//i.test(url)) {
-    return res.status(400).json({ error: 'Invalid or missing URL' });
-  }
-
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; TradeCardBot/1.0)'
-      },
-      timeout: 10000
-    });
+    const url = req.query.url;
 
-    if (!response.ok) {
-      return res.status(502).json({ error: `Target site returned ${response.status}` });
+    if (!url) {
+      return res.status(400).json({ error: 'Missing ?url parameter' });
     }
 
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    // Simple fetch to prove it works on Vercel
+    const response = await fetch(url);
+    if (!response.ok) {
+      return res.status(502).json({ error: `Fetch failed with status ${response.status}` });
+    }
 
-    const title = $('title').text().trim();
-    const headings = [];
-    $('h1,h2,h3').each((_, el) => headings.push($(el).text().trim()));
+    const text = await response.text();
 
-    res.status(200).json({
+    return res.status(200).json({
       status: 'ok',
       url,
-      title,
-      headings
+      length: text.length
     });
 
   } catch (err) {
-    console.error('[crawl error]', err);
-    res.status(500).json({ error: 'Scrape failed', detail: err.message });
+    return res.status(500).json({ error: err.message || 'Internal server error' });
   }
 }
