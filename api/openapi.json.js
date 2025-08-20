@@ -1,0 +1,255 @@
+// api/openapi.json.js
+// Serves the OpenAPI 3.1.0 schema for your scraping/crawling/build-card service.
+
+const SPEC = {
+  openapi: "3.1.0",
+  info: {
+    title: "TradeCard Site Processor",
+    version: "1.0.0",
+    description:
+      "Deterministic site scraping, crawling, and TradeCard JSON builder. Returns structured data suitable for downstream inference."
+  },
+  servers: [
+    {
+      url: "https://<your-app>.vercel.app",
+      description: "Production"
+    },
+    {
+      url: "http://localhost:3000",
+      description: "Local Dev"
+    }
+  ],
+  // If you want to lock this behind an API key later, uncomment security + components.securitySchemes
+  // security: [{ ApiKeyAuth: [] }],
+  paths: {
+    "/api/scrape": {
+      get: {
+        operationId: "scrapePage",
+        summary: "Scrape a single page",
+        description: "Fetches one page and returns title, headings (h1–h3), images (including CSS backgrounds), absolute links, plus socials and contacts derived from links.",
+        parameters: [
+          { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" }, description: "Absolute http(s) URL to scrape" },
+          { name: "limitImages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 500 }, description: "Cap number of images returned" },
+          { name: "cssMaxFiles", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 20 }, description: "Max external stylesheets to fetch" },
+          { name: "cssMaxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 3, default: 2 }, description: "Max @import nesting depth" }
+        ],
+        responses: {
+          "200": {
+            description: "Scrape result",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ScrapeResponse" }
+              }
+            }
+          },
+          "400": { description: "Bad request" },
+          "502": { description: "Upstream/site fetch failed" }
+        }
+      }
+    },
+    "/api/crawl": {
+      get: {
+        operationId: "crawlSite",
+        summary: "Crawl a site (same-origin)",
+        description: "Breadth-first traversal from the start URL, same-origin by default. Aggregates page data but does not build a TradeCard.",
+        parameters: [
+          { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" } },
+          { name: "maxPages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 10 } },
+          { name: "maxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 5, default: 2 } },
+          { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "1 = restrict to same origin; 0 = allow externals" }
+        ],
+        responses: {
+          "200": {
+            description: "Crawl result",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/CrawlResponse" } } }
+          },
+          "400": { description: "Bad request" }
+        }
+      }
+    },
+    "/api/build-card": {
+      get: {
+        operationId: "buildTradeCard",
+        summary: "Build a TradeCard JSON from a site",
+        description: "Calls the deterministic crawler and normalizes into a TradeCard-ready JSON. Leaves inference fields null.",
+        parameters: [
+          { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" } },
+          { name: "maxPages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 12 } },
+          { name: "maxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 5, default: 2 } },
+          { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 } },
+          { name: "save", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "If BOSTONOS_API_TOKEN is set, save to BostonOS when save=1" }
+        ],
+        responses: {
+          "200": {
+            description: "TradeCard result",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/BuildCardResponse" } } }
+          },
+          "400": { description: "Bad request" },
+          "500": { description: "Internal error" }
+        }
+      }
+    }
+  },
+  components: {
+    // securitySchemes: {
+    //   ApiKeyAuth: { type: "apiKey", in: "header", name: "x-api-key" }
+    // },
+    schemas: {
+      Heading: {
+        type: "object",
+        properties: {
+          level: { type: "string", enum: ["h1","h2","h3"] },
+          text: { type: "string" },
+          url:  { type: "string", format: "uri" }
+        },
+        required: ["level","text","url"]
+      },
+      SocialLink: {
+        type: "object",
+        properties: {
+          platform: { type: "string", enum: ["facebook","instagram","twitter","linkedin","youtube","tiktok"] },
+          url: { type: "string", format: "uri" }
+        },
+        required: ["platform","url"]
+      },
+      Contacts: {
+        type: "object",
+        properties: {
+          emails: { type: "array", items: { type: "string", format: "email" } },
+          phones: { type: "array", items: { type: "string" } }
+        }
+      },
+      Page: {
+        type: "object",
+        properties: {
+          url: { type: "string", format: "uri" },
+          title: { type: "string", nullable: true },
+          headings: {
+            type: "object",
+            properties: {
+              h1: { type: "array", items: { type: "string" } },
+              h2: { type: "array", items: { type: "string" } },
+              h3: { type: "array", items: { type: "string" } }
+            }
+          },
+          images: { type: "array", items: { type: "string", format: "uri" } },
+          links:  { type: "array", items: { type: "string", format: "uri" } },
+          social: { type: "array", items: { $ref: "#/components/schemas/SocialLink" } },
+          contacts: { $ref: "#/components/schemas/Contacts" }
+        },
+        required: ["url"]
+      },
+      ScrapeResponse: {
+        type: "object",
+        properties: { page: { $ref: "#/components/schemas/Page" } },
+        required: ["page"]
+      },
+      CrawlResponse: {
+        type: "object",
+        properties: {
+          site:  { type: "string", format: "uri" },
+          pages: { type: "array", items: { $ref: "#/components/schemas/Page" } },
+          stats: {
+            type: "object",
+            properties: {
+              visited: { type: "integer" },
+              returned: { type: "integer" },
+              maxPages: { type: "integer" },
+              maxDepth: { type: "integer" },
+              sameOriginOnly: { type: "boolean" }
+            }
+          },
+          errors: { type: "array", items: { type: "string" } }
+        },
+        required: ["site","pages","stats"]
+      },
+      TradeCard: {
+        type: "object",
+        properties: {
+          business: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              abn: { type: "string", nullable: true },
+              description: { type: "string", nullable: true }
+            },
+            required: ["name"]
+          },
+          contacts: { $ref: "#/components/schemas/Contacts" },
+          social: { type: "array", items: { $ref: "#/components/schemas/SocialLink" } },
+          assets: {
+            type: "object",
+            properties: {
+              logo: { type: "string", format: "uri", nullable: true },
+              hero: { type: "string", format: "uri", nullable: true },
+              images: { type: "array", items: { type: "string", format: "uri" } }
+            }
+          },
+          content: {
+            type: "object",
+            properties: { headings: { type: "array", items: { $ref: "#/components/schemas/Heading" } } }
+          },
+          services: {
+            type: "object",
+            properties: { list: { type: "array", items: { type: "string" }, nullable: true } }
+          },
+          service_areas: { type: "array", items: { type: "string" }, nullable: true },
+          brand: {
+            type: "object",
+            properties: {
+              tone: { type: "string", nullable: true },
+              colors: { type: "array", items: { type: "string" }, nullable: true }
+            }
+          },
+          testimonials: { type: "array", items: { type: "string" }, nullable: true }
+        },
+        required: ["business","contacts","social","assets","content","services","brand"]
+      },
+      BuildCardResponse: {
+        type: "object",
+        properties: {
+          site: {
+            type: "object",
+            properties: {
+              url: { type: "string", format: "uri" },
+              domain: { type: "string" },
+              crawled_at: { type: "string", format: "date-time" },
+              pages_count: { type: "integer" }
+            }
+          },
+          tradecard: { $ref: "#/components/schemas/TradeCard" },
+          provenance: {
+            type: "object",
+            properties: {
+              start_url: { type: "string", format: "uri" },
+              pages: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    url: { type: "string", format: "uri" },
+                    title: { type: "string", nullable: true },
+                    images: { type: "integer" }
+                  }
+                }
+              },
+              extraction: { type: "object" }
+            }
+          },
+          needs_inference: { type: "array", items: { type: "string" } },
+          persisted: {
+            type: "object",
+            nullable: true,
+            additionalProperties: true
+          }
+        },
+        required: ["site","tradecard","provenance","needs_inference"]
+      }
+    }
+  }
+};
+
+module.exports = async (req, res) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.status(200).end(JSON.stringify(SPEC, null, 2));
+};
