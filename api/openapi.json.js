@@ -89,7 +89,8 @@ const SPEC = {
           { name: "maxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 5, default: 2 } },
           { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 } },
           { name: "infer", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 0 }, description: "When 1 and OPENAI_API_KEY is set, infer missing fields (business.description, services.list, service_areas, brand.tone, testimonials)" },
-          { name: "save", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "If BOSTONOS_API_TOKEN is set, save to BostonOS when save=1" }
+          { name: "save", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "If BOSTONOS_API_TOKEN is set, save to BostonOS when save=1" },
+          { name: "push", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 0 }, description: "When 1 and WP_BASE/WP_BEARER are set, push TradeCard to WordPress" }
         ],
         responses: {
           "200": {

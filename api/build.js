@@ -3,6 +3,7 @@
 
 const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { inferTradecard } = require('../lib/infer');
+const { pushToWordpress } = require('../lib/wordpress');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -45,6 +46,22 @@ module.exports = async function handler(req, res) {
         console.warn('Inference failed:', err.message || err);
       }
     }
+
+    let wordpress;
+    if (req.query?.push === '1') {
+      if (!process.env.WP_BASE || !process.env.WP_BEARER) {
+        wordpress = { skipped: true, reason: 'Missing WP_BASE or WP_BEARER' };
+      } else {
+        try {
+          wordpress = await pushToWordpress(result.tradecard);
+        } catch (err) {
+          wordpress = { ok: false, error: err.message || String(err) };
+        }
+      }
+    } else {
+      wordpress = { skipped: true, reason: 'push not requested' };
+    }
+    result.wordpress = wordpress;
 
     return res.status(200).json(result);
   } catch (err) {
