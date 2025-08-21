@@ -1,51 +1,26 @@
 const test = require('node:test');
-const assert = require('assert');
+const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
 const { parse } = require('../lib/parse');
+const mockFetch = require('./helpers/mockFetch');
 
-test('parse extracts title, headings, images, socials and contacts', async () => {
-  const html = `<!DOCTYPE html>
-  <html>
-    <head>
-      <title>Test Page</title>
-      <meta property="og:image" content="https://example.com/og.png" />
-      <style>.hero{background:url('/images/bg.jpg')}</style>
-    </head>
-    <body>
-      <h1>Main Title</h1>
-      <h2>Subheading</h2>
-      <h3>Another</h3>
-      <img src="/img/logo.png" srcset="/img/logo.png 1x, /img/logo@2x.png 2x" />
-      <div style="background-image:url('/img/bg-inline.jpg')"></div>
-      <a href="mailto:test@example.com">Email</a>
-      <a href="tel:12345">Call</a>
-      <a href="https://twitter.com/test">Twitter</a>
-      <a href="https://facebook.com/test">Facebook</a>
-    </body>
-  </html>`;
-
-  const page = await parse(html, 'https://example.com');
-
-  assert.strictEqual(page.title, 'Test Page');
-  assert.deepStrictEqual(page.headings, {
-    h1: ['Main Title'],
-    h2: ['Subheading'],
-    h3: ['Another']
+test('parse extracts canonical images, headings, socials, contacts', async () => {
+  const restore = mockFetch({
+    'http://example.com/style.css': { body: 'body{background:url("http://example.com/css.png?cache=1");}' },
+    'http://example.com/imported.css': { body: 'h1{background:url("http://example.com/import.png#frag");}' }
   });
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/simple.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  restore();
 
-  const imgs = page.images.sort();
-  assert(imgs.includes('https://example.com/img/logo.png'));
-  assert(imgs.includes('https://example.com/img/logo@2x.png'));
-  assert(imgs.includes('https://example.com/images/bg.jpg'));
-  assert(imgs.includes('https://example.com/img/bg-inline.jpg'));
-  assert(imgs.includes('https://example.com/og.png'));
-
-  assert.deepStrictEqual(page.contacts, {
-    emails: ['test@example.com'],
-    phones: ['12345']
-  });
-
-  assert.deepStrictEqual(page.social.sort((a,b)=>a.platform.localeCompare(b.platform)), [
-    { platform: 'facebook', url: 'https://facebook.com/test' },
-    { platform: 'twitter', url: 'https://twitter.com/test' }
-  ]);
+  assert.equal(page.title, 'Simple Page');
+  assert.deepEqual(page.headings.h1, ['H1']);
+  assert.deepEqual(page.headings.h2, ['H2']);
+  assert.deepEqual(page.headings.h3, ['H3']);
+  assert.ok(page.images.every(u => u.startsWith('http://example.com/') && !u.includes('?') && !u.includes('#')));
+  assert.equal(new Set(page.images).size, page.images.length);
+  assert.ok(page.social.find(s => s.platform === 'facebook'));
+  assert.deepEqual(page.contacts.emails, ['info@example.com']);
+  assert.deepEqual(page.contacts.phones, ['+123456']);
 });

@@ -1,5 +1,5 @@
 // /api/build.js
-// Build a TradeCard JSON from crawling a site. Optional OpenAI inference.
+// Build a TradeCard JSON from crawling a site. Optional OpenAI inference and WordPress push.
 
 const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { inferTradecard } = require('../lib/infer');
@@ -17,78 +17,71 @@ module.exports = async function handler(req, res) {
   const doPush = req.query?.push === '1';
 
   const trace = [];
-  const timed = async (stage, target, fn) => {
-    const t0 = Date.now();
-    try {
-      const r = await fn();
-      trace.push({ stage, target, ms: Date.now() - t0, ok: true });
-      return r;
-    } catch (err) {
-      trace.push({ stage, target, ms: Date.now() - t0, ok: false });
-      throw err;
-    }
-  };
 
   try {
-    const pages = await timed('crawl', startUrl, () => crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly }));
+    const t0 = Date.now();
+    const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
+    trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
 
+    trace.push({ stage: 'infer', enabled: doInfer, key_present: !!process.env.OPENAI_API_KEY });
     if (doInfer && process.env.OPENAI_API_KEY) {
-      try {
-        const inferred = await timed('infer', 'openai', () => inferTradecard(result.tradecard));
-        const applied = [];
-        if (inferred?.business?.description) {
-          result.tradecard.business.description = inferred.business.description;
-          applied.push('business.description');
-        }
-        if (Array.isArray(inferred?.services?.list)) {
-          result.tradecard.services.list = inferred.services.list;
-          applied.push('services.list');
-        }
-        if (Array.isArray(inferred?.service_areas)) {
-          result.tradecard.service_areas = inferred.service_areas;
-          applied.push('service_areas');
-        }
-        if (inferred?.brand?.tone) {
-          result.tradecard.brand.tone = inferred.brand.tone;
-          applied.push('brand.tone');
-        }
-        if (Array.isArray(inferred?.testimonials)) {
-          result.tradecard.testimonials = inferred.testimonials;
-          applied.push('testimonials');
-        }
-        result.needs_inference = result.needs_inference.filter(k => !applied.includes(k));
-      } catch (err) {
-        console.warn('Inference failed:', err.message || err);
+      const inferred = await inferTradecard(result.tradecard);
+      trace.push({ stage: 'infer_response', meta: inferred._meta });
+      const applied = [];
+      delete inferred._meta;
+      if (inferred?.business?.description) {
+        result.tradecard.business.description = inferred.business.description;
+        applied.push('business.description');
       }
+      if (Array.isArray(inferred?.services?.list)) {
+        result.tradecard.services.list = inferred.services.list;
+        applied.push('services.list');
+      }
+      if (Array.isArray(inferred?.service_areas)) {
+        result.tradecard.service_areas = inferred.service_areas;
+        applied.push('service_areas');
+      }
+      if (inferred?.brand?.tone) {
+        result.tradecard.brand.tone = inferred.brand.tone;
+        applied.push('brand.tone');
+      }
+      if (Array.isArray(inferred?.testimonials)) {
+        result.tradecard.testimonials = inferred.testimonials;
+        applied.push('testimonials');
+      }
+      result.needs_inference = result.needs_inference.filter(k => !applied.includes(k));
+      trace.push({ stage: 'infer_merge', applied });
     }
 
     let wordpress;
     if (doPush) {
       if (!process.env.WP_BASE || !process.env.WP_BEARER) {
         wordpress = { skipped: true, reason: 'Missing WP_BASE or WP_BEARER' };
-        trace.push({ stage: 'push', target: 'wordpress', ms: 0, ok: false });
       } else {
         const base = process.env.WP_BASE;
         const token = process.env.WP_BEARER;
         const steps = [];
         let postId;
         try {
-          const create = await timed('push', 'create', () => createPost(base, token, { title: result.tradecard.business.name }));
+          const create = await createPost(base, token, { title: result.tradecard.business.name });
           steps.push({ step: 'create', ...create });
+          trace.push({ stage: 'push', step: 'create', ok: create.ok, status: create.status });
           if (create.ok) postId = create.json?.id;
 
           if (postId && result.tradecard.assets.logo) {
-            const up = await timed('push', 'upload_logo', () => uploadFromUrl(base, token, result.tradecard.assets.logo));
+            const up = await uploadFromUrl(base, token, result.tradecard.assets.logo);
             steps.push({ step: 'upload_logo', ...up });
+            trace.push({ stage: 'push', step: 'upload_logo', ok: up.ok, status: up.status });
             if (up.ok && (up.json?.url || up.json?.source_url)) {
               result.tradecard.assets.logo = up.json.url || up.json.source_url;
             }
           }
 
           if (postId && result.tradecard.assets.hero) {
-            const up = await timed('push', 'upload_hero', () => uploadFromUrl(base, token, result.tradecard.assets.hero));
+            const up = await uploadFromUrl(base, token, result.tradecard.assets.hero);
             steps.push({ step: 'upload_hero', ...up });
+            trace.push({ stage: 'push', step: 'upload_hero', ok: up.ok, status: up.status });
             if (up.ok && (up.json?.url || up.json?.source_url)) {
               result.tradecard.assets.hero = up.json.url || up.json.source_url;
             }
@@ -96,14 +89,16 @@ module.exports = async function handler(req, res) {
 
           if (postId) {
             const fields = mapAcf(result.tradecard);
-            const acf = await timed('push', 'acf_sync', () => acfSync(base, token, postId, fields));
+            const acf = await acfSync(base, token, postId, fields);
             steps.push({ step: 'acf_sync', ...acf });
+            trace.push({ stage: 'push', step: 'acf_sync', ok: acf.ok, status: acf.status });
             wordpress = { ok: acf.ok && create.ok, post_id: postId, details: { steps } };
           } else {
             wordpress = { ok: false, post_id: postId, details: { steps } };
           }
         } catch (err) {
           steps.push({ step: 'error', error: err.message || String(err) });
+          trace.push({ stage: 'push', step: 'error', ok: false });
           wordpress = { ok: false, post_id: postId, details: { steps } };
         }
       }
@@ -111,9 +106,11 @@ module.exports = async function handler(req, res) {
       wordpress = { skipped: true, reason: 'push not requested' };
     }
     result.wordpress = wordpress;
-    result.trace = trace;
 
-    return res.status(200).json(result);
+    const output = result;
+    if (req.query?.debug === '1') output.debug = { trace };
+
+    return res.status(200).json(output);
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Failed to build card' });
   }
