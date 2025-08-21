@@ -11,7 +11,7 @@ const SPEC = {
   },
   servers: [
     {
-      url: "https://<your-app>.vercel.app",
+      url: "https://tradecard-api-ten.vercel.app",
       description: "Production"
     },
     {
