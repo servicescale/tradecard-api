@@ -38,4 +38,8 @@ test('build route performs crawl, inference, push', async () => {
   assert.ok(!res.body.needs_inference.includes('business.description'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'crawl'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'infer_merge'));
+  assert.ok(res.body.debug.trace.find(t => t.stage === 'push' && t.step === 'acf_sync'));
+  const steps = res.body.wordpress.details.steps;
+  assert.deepEqual(steps.map(s => s.step), ['create','upload_logo','upload_hero','acf_sync']);
+  assert.ok(steps[0].response.ok);
 });
