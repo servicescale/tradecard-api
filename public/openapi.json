@@ -42,7 +42,7 @@
         }
       }
     },
-    "/api/build-card": {
+    "/api/build": {
       "get": {
         "operationId": "buildTradeCard",
         "summary": "Build a TradeCard JSON from a site",
