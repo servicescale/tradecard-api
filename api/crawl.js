@@ -1,7 +1,7 @@
 // /api/crawl.js
 // BFS same-origin crawler that reuses scrapePage().
 
-const { scrapePage } = require('./scrape');
+const { scrapePage } = require('../lib/scrape');
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 
 module.exports = async function handler(req, res) {

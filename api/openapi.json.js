@@ -1,5 +1,5 @@
 // api/openapi.json.js
-// Serves the OpenAPI 3.1.0 schema for your scraping/crawling/build-card service.
+// Serves the OpenAPI 3.1.0 schema for your scraping/crawling/build service.
 
 const SPEC = {
   openapi: "3.1.0",
@@ -67,7 +67,7 @@ const SPEC = {
         }
       }
     },
-    "/api/build-card": {
+    "/api/build": {
       get: {
         operationId: "buildTradeCard",
         summary: "Build a TradeCard JSON from a site",
