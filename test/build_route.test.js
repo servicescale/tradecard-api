@@ -37,6 +37,7 @@ test('build route performs crawl, inference, push', async () => {
   assert.ok(res.body.wordpress.ok);
   assert.ok(!res.body.needs_inference.includes('business.description'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'crawl'));
+  assert.ok(res.body.debug.trace.find(t => t.stage === 'infer_response'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'infer_merge'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'push' && t.step === 'acf_sync'));
   const steps = res.body.wordpress.details.steps;
