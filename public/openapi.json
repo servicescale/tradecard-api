@@ -6,8 +6,7 @@
     "description": "Deterministic site scraping, crawling, and TradeCard JSON builder. Returns structured data suitable for downstream inference."
   },
   "servers": [
-    { "url": "https://tradecard-api-ten.vercel.app", "description": "Production" },
-    { "url": "http://localhost:3000", "description": "Local Dev" }
+    { "url": "https://tradecard-api-ten.vercel.app" }
   ],
   "paths": {
     "/api": {

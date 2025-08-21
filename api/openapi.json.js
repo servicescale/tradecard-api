@@ -11,12 +11,7 @@ const SPEC = {
   },
   servers: [
     {
-      url: "https://tradecard-api-ten.vercel.app",
-      description: "Production"
-    },
-    {
-      url: "http://localhost:3000",
-      description: "Local Dev"
+      url: "https://tradecard-api-ten.vercel.app"
     }
   ],
   // If you want to lock this behind an API key later, uncomment security + components.securitySchemes
