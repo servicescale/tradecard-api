@@ -10,6 +10,15 @@
     { "url": "http://localhost:3000", "description": "Local Dev" }
   ],
   "paths": {
+    "/api": {
+      "get": {
+        "operationId": "healthCheck",
+        "summary": "Health check and list available endpoints",
+        "responses": {
+          "200": { "description": "API status and available endpoints" }
+        }
+      }
+    },
     "/api/scrape": {
       "get": {
         "operationId": "scrapePage",

@@ -22,6 +22,17 @@ const SPEC = {
   // If you want to lock this behind an API key later, uncomment security + components.securitySchemes
   // security: [{ ApiKeyAuth: [] }],
   paths: {
+    "/api": {
+      get: {
+        operationId: "healthCheck",
+        summary: "Health check and list available endpoints",
+        responses: {
+          "200": {
+            description: "API status and available endpoints"
+          }
+        }
+      }
+    },
     "/api/scrape": {
       get: {
         operationId: "scrapePage",
