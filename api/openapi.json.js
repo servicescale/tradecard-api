@@ -71,12 +71,13 @@ const SPEC = {
       get: {
         operationId: "buildTradeCard",
         summary: "Build a TradeCard JSON from a site",
-        description: "Calls the deterministic crawler and normalizes into a TradeCard-ready JSON. Leaves inference fields null.",
+        description: "Calls the deterministic crawler and normalizes into a TradeCard-ready JSON. When infer=1 and OPENAI_API_KEY is set, attempts to infer business.description, services.list, service_areas, brand.tone, and testimonials.",
         parameters: [
           { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" } },
           { name: "maxPages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 12 } },
           { name: "maxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 5, default: 2 } },
           { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 } },
+          { name: "infer", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 0 }, description: "When 1 and OPENAI_API_KEY is set, infer missing fields (business.description, services.list, service_areas, brand.tone, testimonials)" },
           { name: "save", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "If BOSTONOS_API_TOKEN is set, save to BostonOS when save=1" }
         ],
         responses: {
