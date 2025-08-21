@@ -22,9 +22,13 @@ test('buildTradecardFromPages assembles tradecard data', () => {
 
   assert.strictEqual(result.tradecard.business.name, 'Example Co');
   assert.deepStrictEqual(result.tradecard.contacts.emails, ['hello@example.com']);
+  assert.deepStrictEqual(result.tradecard.contacts.phones, ['123']);
   assert.deepStrictEqual(result.tradecard.social, [
     { platform: 'twitter', url: 'https://twitter.com/example' }
   ]);
   assert.strictEqual(result.tradecard.assets.logo, 'https://example.com/logo.png');
   assert.strictEqual(result.tradecard.assets.hero, 'https://example.com/hero.jpg');
+  assert.deepStrictEqual(result.tradecard.content.headings, [
+    { level: 'h1', text: 'Welcome', url: 'https://example.com' }
+  ]);
 });
