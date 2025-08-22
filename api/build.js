@@ -4,7 +4,7 @@
 const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { inferTradecard } = require('../lib/infer');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
-const { mapTradecardToAcf } = require('../lib/mapAcf');
+const { applyIntent } = require('../lib/intent');
 const { pickBest } = require('../lib/resolve');
 
 const INFER_THRESHOLD = parseFloat(process.env.INFER_THRESHOLD || '0.7');
@@ -122,18 +122,17 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const { fields: acfPayload, dropped_unknown, dropped_empty } = mapTradecardToAcf(result.tradecard);
-            const acf_keys = Object.keys(acfPayload);
-            const acf = await acfSync(base, token, postId, acfPayload);
+            const intent = applyIntent(result.tradecard);
+            const acf = await acfSync(base, token, postId, intent.fields);
             steps.push({
               step: 'acf_sync',
-              sent_keys: acf.sent_keys,
-              dropped_unknown,
-              dropped_empty,
+              sent_keys: intent.sent_keys,
+              dropped_unknown: intent.dropped_unknown,
+              dropped_empty: intent.dropped_empty,
               response: { status: acf.status }
             });
             trace.push({ stage: 'push', step: 'acf_sync', ok: acf.ok, status: acf.status });
-            const details = { steps, acf_keys };
+            const details = { steps, acf_keys: intent.sent_keys };
             wordpress = { ok: acf.ok && create.ok, post_id: postId, details };
           } else {
             wordpress = { ok: false, post_id: postId, details: { steps } };
