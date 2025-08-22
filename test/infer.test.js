@@ -8,13 +8,25 @@ test('inferTradecard tolerates fenced JSON and filters fields', async () => {
   resetEnv({ OPENAI_API_KEY: 'k' });
   const restore = mockFetch({
     'https://api.openai.com/v1/chat/completions': {
-      json: { choices: [{ message: { content: '```json\n{"business":{"description":"desc"},"services":{"list":["a"]},"extra":1}\n```' } }] }
+      json: {
+        choices: [
+          {
+            message: {
+              content:
+                '```json\n{"business":{"description":"desc"},"services":{"list":["a"]},"extra":1}\n```'
+            }
+          }
+        ]
+      }
     }
   });
   const out = await inferTradecard({ business: { name: 'x' } });
   restore();
   const { _meta, ...data } = out;
-  assert.deepEqual(data, { business: { description: 'desc' }, services: { list: ['a'] } });
+  assert.deepEqual(data, {
+    business: { description: { value: 'desc', confidence: 0.5 } },
+    services: { list: { value: ['a'], confidence: 0.5 } }
+  });
   assert.deepEqual(_meta, { ok: true });
 });
 

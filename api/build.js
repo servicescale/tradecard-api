@@ -5,6 +5,9 @@ const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { inferTradecard } = require('../lib/infer');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { mapTradecardToAcf } = require('../lib/mapAcf');
+const { pickBest } = require('../lib/resolve');
+
+const INFER_THRESHOLD = parseFloat(process.env.INFER_THRESHOLD || '0.7');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -30,27 +33,42 @@ module.exports = async function handler(req, res) {
       trace.push({ stage: 'infer_response', meta: inferred._meta });
       const applied = [];
       delete inferred._meta;
-      if (inferred?.business?.description) {
-        result.tradecard.business.description = inferred.business.description;
-        applied.push('business.description');
+
+      const desc = pickBest(inferred.business || {}, 'description');
+      if (desc.value !== undefined && desc.confidence >= INFER_THRESHOLD) {
+        result.tradecard.business.description = desc.value;
+        applied.push({ key: 'business.description', confidence: desc.confidence });
+        result.needs_inference = result.needs_inference.filter(k => k !== 'business.description');
       }
-      if (Array.isArray(inferred?.services?.list)) {
-        result.tradecard.services.list = inferred.services.list;
-        applied.push('services.list');
+
+      const servicesList = pickBest(inferred.services || {}, 'list');
+      if (Array.isArray(servicesList.value) && servicesList.confidence >= INFER_THRESHOLD) {
+        result.tradecard.services.list = servicesList.value;
+        applied.push({ key: 'services.list', confidence: servicesList.confidence });
+        result.needs_inference = result.needs_inference.filter(k => k !== 'services.list');
       }
-      if (Array.isArray(inferred?.service_areas)) {
-        result.tradecard.service_areas = inferred.service_areas;
-        applied.push('service_areas');
+
+      const areas = pickBest(inferred, 'service_areas');
+      if (Array.isArray(areas.value) && areas.confidence >= INFER_THRESHOLD) {
+        result.tradecard.service_areas = areas.value;
+        applied.push({ key: 'service_areas', confidence: areas.confidence });
+        result.needs_inference = result.needs_inference.filter(k => k !== 'service_areas');
       }
-      if (inferred?.brand?.tone) {
-        result.tradecard.brand.tone = inferred.brand.tone;
-        applied.push('brand.tone');
+
+      const tone = pickBest(inferred.brand || {}, 'tone');
+      if (tone.value !== undefined && tone.confidence >= INFER_THRESHOLD) {
+        result.tradecard.brand.tone = tone.value;
+        applied.push({ key: 'brand.tone', confidence: tone.confidence });
+        result.needs_inference = result.needs_inference.filter(k => k !== 'brand.tone');
       }
-      if (Array.isArray(inferred?.testimonials)) {
-        result.tradecard.testimonials = inferred.testimonials;
-        applied.push('testimonials');
+
+      const testi = pickBest(inferred, 'testimonials');
+      if (Array.isArray(testi.value) && testi.confidence >= INFER_THRESHOLD) {
+        result.tradecard.testimonials = testi.value;
+        applied.push({ key: 'testimonials', confidence: testi.confidence });
+        result.needs_inference = result.needs_inference.filter(k => k !== 'testimonials');
       }
-      result.needs_inference = result.needs_inference.filter(k => !applied.includes(k));
+
       trace.push({ stage: 'infer_merge', applied });
     }
 

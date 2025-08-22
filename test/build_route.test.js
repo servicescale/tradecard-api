@@ -18,7 +18,16 @@ test('build route performs crawl, inference, push', async () => {
   resetEnv({ OPENAI_API_KEY: 'k', WP_BASE: 'http://wp', WP_BEARER: 't' });
   const restore = mockFetch({
     'https://api.openai.com/v1/chat/completions': {
-      json: { choices: [{ message: { content: '{"business":{"description":"d"},"services":{"list":["s"]}}' } }] }
+      json: {
+        choices: [
+          {
+            message: {
+              content:
+                '{"business":{"description":{"value":"d","confidence":0.9}},"services":{"list":{"value":["s"],"confidence":0.8}}}'
+            }
+          }
+        ]
+      }
     },
     'http://wp/wp-json/': { json: { routes: { '/custom/v1/acf-sync/(?P<id>\\d+)': { methods: ['POST'] } } } },
     'http://wp/wp-json/wp/v2/tradecard': { json: { id: 1 } },
