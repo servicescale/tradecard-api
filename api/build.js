@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
     const result = buildTradecardFromPages(startUrl, pages);
 
     trace.push({ stage: 'infer', enabled: doInfer, key_present: !!process.env.OPENAI_API_KEY });
-    if (doInfer && process.env.OPENAI_API_KEY) {
+    if (doInfer) {
       const inferred = await inferTradecard(result.tradecard);
       trace.push({ stage: 'infer_response', meta: inferred._meta });
       const applied = [];

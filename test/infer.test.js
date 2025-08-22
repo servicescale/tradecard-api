@@ -13,7 +13,9 @@ test('inferTradecard tolerates fenced JSON and filters fields', async () => {
   });
   const out = await inferTradecard({ business: { name: 'x' } });
   restore();
-  assert.deepEqual(out, { business: { description: 'desc' }, services: { list: ['a'] } });
+  const { _meta, ...data } = out;
+  assert.deepEqual(data, { business: { description: 'desc' }, services: { list: ['a'] } });
+  assert.deepEqual(_meta, { ok: true });
 });
 
 test('inferTradecard reports invalid JSON in _meta', async () => {
@@ -25,6 +27,11 @@ test('inferTradecard reports invalid JSON in _meta', async () => {
   });
   const out = await inferTradecard({});
   restore();
-  assert.ok(out._meta);
   assert.equal(out._meta.error, 'invalid_json');
+});
+
+test('inferTradecard skips without API key', async () => {
+  resetEnv({});
+  const out = await inferTradecard({});
+  assert.deepEqual(out, { _meta: { skipped: 'no_api_key' } });
 });
