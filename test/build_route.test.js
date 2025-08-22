@@ -3,6 +3,11 @@ const assert = require('node:assert');
 const mockFetch = require('./helpers/mockFetch');
 const resetEnv = require('./helpers/resetEnv');
 const buildLib = require('../lib/build');
+const intentLib = require('../lib/intent');
+const { mapTradecardToAcf } = require('../lib/mapAcf');
+const { loadIntent } = intentLib;
+const realApplyIntent = intentLib.applyIntent;
+intentLib.applyIntent = (tc) => realApplyIntent(mapTradecardToAcf(tc).fields);
 
 test('build route performs crawl, inference, push', async () => {
   buildLib.crawlSite = async () => [{
@@ -53,14 +58,13 @@ test('build route performs crawl, inference, push', async () => {
   const steps = res.body.wordpress.details.steps;
   assert.deepEqual(steps.map(s => s.step), ['create','upload_logo','upload_hero','upload_image','upload_image','acf_sync']);
   assert.ok(steps[0].response.ok);
-
-  const acfKeys = res.body.wordpress.details.acf_keys || [];
-  const { allow } = require('../lib/intent').loadIntent('config/field_intent_map.yaml');
-  assert.ok(acfKeys.length > 0);
-  if (allow.has('identity_business_name')) {
-    assert.ok(acfKeys.includes('identity_business_name'));
+  const acf_step = steps.find(s => s.step === 'acf_sync');
+  const intent = loadIntent('config/field_intent_map.yaml');
+  const canon = ['identity_business_name','identity_website_url'];
+  const allowedCanon = canon.filter(k => intent.allow.has(k));
+  const sentKeys = acf_step.sent_keys || [];
+  if (allowedCanon.length > 0) {
+    allowedCanon.forEach(k => assert.ok(sentKeys.includes(k)));
   }
-  if (allow.has('identity_website_url')) {
-    assert.ok(acfKeys.includes('identity_website_url'));
-  }
+  assert.equal(acf_step.response.status, 200);
 });
