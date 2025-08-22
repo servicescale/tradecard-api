@@ -4,7 +4,7 @@
 const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { inferTradecard } = require('../lib/infer');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
-const { mapAcf } = require('../lib/mapAcf');
+const { mapTradecardToAcf } = require('../lib/mapAcf');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -89,10 +89,12 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const fields = mapAcf(result.tradecard);
-            const acf = await acfSync(base, token, postId, fields);
-            pushStep('acf_sync', acf);
-            wordpress = { ok: acf.ok && create.ok, post_id: postId, details: { steps } };
+            const acfPayload = mapTradecardToAcf(result.tradecard);
+            const details = { steps, acf_keys: Object.keys(acfPayload) };
+            const acf = await acfSync(base, token, postId, acfPayload);
+            steps.push({ step: 'acf_sync', response: { ok: acf.ok, status: acf.status }, sent_keys: details.acf_keys });
+            trace.push({ stage: 'push', step: 'acf_sync', ok: acf.ok, status: acf.status });
+            wordpress = { ok: acf.ok && create.ok, post_id: postId, details };
           } else {
             wordpress = { ok: false, post_id: postId, details: { steps } };
           }
