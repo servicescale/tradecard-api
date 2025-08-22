@@ -1,0 +1,69 @@
+version: 1.0
+capsule: profile_generator
+stage: publish
+
+inputs:
+  structured_profile: "mk4/capsules/profile_generator/data/profiles/{slug}_structured.yaml"
+  acf_schema: "mk4/capsules/profile_generator/config/acf_field_list.yaml"
+  backlog_file: "mk4/capsules/profile_generator/config/profiles_backlog.yaml"
+
+steps:
+  - name: LOAD structured profile and schema
+    run: |
+      profile_data = load_yaml(inputs.structured_profile)
+      acf_schema = load_yaml(inputs.acf_schema)
+
+  - name: CHECK for null text values and strip non-ACF keys
+    run: |
+      for key, value in profile_data.items():
+        if key in acf_schema and value is None:
+          profile_data[key] = ""
+      profile_data = {k: v for k, v in profile_data.items() if k in acf_schema}
+
+  - name: EXECUTE image upload and replacement
+    run: |
+      for key, value in profile_data.items():
+        if key.endswith("_image_url") and isinstance(value, str) and value.startswith("http"):
+          attachment_id = upload_image_to_wp(value)
+          profile_data[key] = str(attachment_id)
+
+  - name: EXECUTE VCF generation and upload
+    run: |
+      slug = slugify(profile_data["identity_business_name"])
+      vcf_lines = [
+          "BEGIN:VCARD",
+          "VERSION:3.0",
+          f"FN:{profile_data.get('identity_owner_name', '')}",
+          f"ORG:{profile_data.get('identity_business_name', '')}",
+          f"TITLE:{profile_data.get('identity_business_type', '')}",
+          f"TEL;TYPE=WORK,VOICE:{profile_data.get('identity_phone', '')}",
+          f"URL:https://tradecard.au/{slug}",
+          "END:VCARD"
+      ]
+      vcf_content = "\n".join(vcf_lines)
+      upload_to_bucket("vcf-cards", f"{slug}.vcf", vcf_content)
+      profile_data["trust_vcf_url"] = f"https://contact.tradecard.au/{slug}.vcf"
+
+  - name: CONFIRM operator review of payload
+    run: |
+      preview(profile_data)
+
+  - name: COMMIT ACF update and meta push
+    run: |
+      tradecard_id = profile_data.get("post_id") or create_tradecard_post(profile_data["identity_business_name"])
+      update_acf_via_custom_endpoint(tradecard_id, profile_data)
+      update_tradecard_meta(
+        post_id=tradecard_id,
+        yoast_title=f"{profile_data.get('identity_owner_name', '')} – {profile_data.get('identity_business_name', '')}",
+        yoast_description=generate_meta_description(profile_data),
+        og_image_url=get_wp_media_url(profile_data.get('identity_logo_url'))
+      )
+
+  - name: COMMIT backlog status update
+    run: |
+      backlog = load_yaml(inputs.backlog_file)
+      for entry in backlog["profiles_backlog"]:
+        if entry["website"] == profile_data.get("identity_website_url"):
+          entry["status"] = "published"
+          entry["notes"] = "Published via optimised 3-call pipeline"
+      save_yaml(inputs.backlog_file, backlog)

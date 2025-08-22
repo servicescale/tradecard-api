@@ -1,0 +1,64 @@
+version: 1.0
+capsule: profile_generator
+stage: resolve
+
+inputs:
+  raw_profile: "mk4/capsules/profile_generator/data/profiles/{slug}_raw.json"
+  intent_map: "mk4/capsules/profile_generator/config/field_intent_map.yaml"
+  template_file: "mk4/capsules/profile_generator/config/structured_output_template.yaml"
+  backlog_file: "mk4/capsules/profile_generator/config/profiles_backlog.yaml"
+
+outputs:
+  structured_profile: "mk4/capsules/profile_generator/data/profiles/{slug}_structured.yaml"
+
+steps:
+  - name: LOAD all required files
+    run: |
+      raw_data = load_json(inputs.raw_profile)
+      intent = load_yaml(inputs.intent_map)
+      template = load_yaml(inputs.template_file)
+
+  - name: CHECK template integrity
+    run: |
+      assert all(field in intent for field in template.keys()), "Missing mappings in intent map"
+
+  - name: EXECUTE prompt-driven Resolve with inline third panel auto-fill
+    llm:
+      role: system
+      content: |
+        You are Resolve, the profile generation engine.
+        Your job is to produce the most complete possible structured profile for a business from the provided raw scrape.
+        RULES:
+        - Follow every mapping in the field intent map.
+        - Populate all fields in the structured output template.
+        - Always fill derived fields when source data exists.
+        - Apply safe defaults where allowed.
+        - Format identity_services with <div class="tag">…</div>.
+        - Use plain text for service_1_tags, service_2_tags, and service_3_tags (e.g., featured service).
+        - Remove underscores from tags.
+        - For projects, CTA = "See More" linking to the project page if available.
+        - Prefer a mix of 2 services + 1 project or 1 service + 2 projects if content permits.
+        - Builders and renovation firms should prioritise showcasing completed builds.
+        - If fewer than 3 panels are available, attempt to auto-fill panel 3 with a "Featured Project" from gallery/project content.
+        - identity_website = display only (no https / www), identity_website_url = full link.
+        - identity_role_title = business-facing title.
+        - identity_insured = licences or certifications.
+        - Leave image fields as URLs; IDs handled in Publish.
+        - Only use null where no data exists.
+        - Maintain template field order.
+        - Output valid YAML only.
+      input:
+        raw_profile: ${raw_data}
+        field_intent_map: ${intent}
+        structured_output_template: ${template}
+      output: resolved_yaml
+
+  - name: COMMIT structured profile and backlog update
+    run: |
+      save_yaml(outputs.structured_profile, load_yaml_from_string(resolved_yaml))
+      backlog = load_yaml(inputs.backlog_file)
+      for entry in backlog["profiles_backlog"]:
+          if entry["website"] == load_yaml_from_string(resolved_yaml).get("identity_website_url"):
+              entry["status"] = "resolved"
+              entry["notes"] = f"Resolved on {current_timestamp()}"
+      save_yaml(inputs.backlog_file, backlog)

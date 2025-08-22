@@ -1,0 +1,56 @@
+version: 1.0
+capsule: profile_generator
+stage: gather
+
+inputs:
+  backlog_file: "mk4/capsules/profile_generator/config/profiles_backlog.yaml"
+
+steps:
+  - name: LOAD backlog and profile entry
+    run: |
+      backlog = load_yaml(inputs.backlog_file)
+      pending_profiles = [p for p in backlog["profiles_backlog"] if p["status"] == "pending"]
+
+  - name: EXECUTE crawl or fallback lookup
+    run: |
+      for profile in pending_profiles:
+          slug = slugify(profile["business_name"])
+          raw_path = f"mk4/capsules/profile_generator/data/profiles/{slug}_raw.json"
+
+          if profile["website"]:
+              raw_data = crawl_website(profile["website"])
+          else:
+              raw_data = fallback_lookup(profile["business_name"], profile.get("suburb", ""))
+
+          # Inline completeness check
+          missing_fields = []
+          if not raw_data.get("phone"): missing_fields.append("phone")
+          if not raw_data.get("email"): missing_fields.append("email")
+          if not raw_data.get("services"): missing_fields.append("services")
+          if not raw_data.get("social_links"): missing_fields.append("social links")
+
+          # Inline testimonial & reviews extraction
+          if not raw_data.get("testimonial"):
+              raw_data["testimonial"] = extract_testimonial(raw_data)
+          if not raw_data.get("google_rating"):
+              raw_data["google_rating"] = extract_google_rating(profile["website"])
+
+          save_json(raw_path, raw_data)
+
+          # Update backlog inline with timestamp
+          profile["status"] = "gathered"
+          profile["notes"] = f"Gathered on {current_timestamp()}"
+
+      save_yaml(inputs.backlog_file, backlog)
+
+  - name: OUTPUT summary table
+    run: |
+      summary = []
+      for profile in pending_profiles:
+          summary.append({
+              "Business": profile["business_name"],
+              "Website": profile["website"],
+              "Status": profile["status"],
+              "Notes": profile["notes"]
+          })
+      display_table(summary)
