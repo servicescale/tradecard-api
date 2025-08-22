@@ -88,6 +88,21 @@ module.exports = async function handler(req, res) {
             }
           }
 
+          if (postId && Array.isArray(result.tradecard.assets.images)) {
+            const newImages = [];
+            for (const url of result.tradecard.assets.images.slice(0, 10)) {
+              const up = await uploadFromUrl(base, token, url);
+              steps.push({ step: 'upload_image', url, response: { ok: up.ok, status: up.status } });
+              trace.push({ stage: 'push', step: 'upload_image', ok: up.ok, status: up.status });
+              if (up.ok && (up.json?.url || up.json?.source_url)) {
+                newImages.push(up.json.url || up.json.source_url);
+              } else {
+                newImages.push(url);
+              }
+            }
+            result.tradecard.assets.images = newImages;
+          }
+
           if (postId) {
             const acfPayload = mapTradecardToAcf(result.tradecard);
             const details = { steps, acf_keys: Object.keys(acfPayload) };
