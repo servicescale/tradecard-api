@@ -5,6 +5,7 @@ const mockFetch = require('./helpers/mockFetch');
 
 test('wp helpers handle success and error paths', async () => {
   let restore = mockFetch({
+    'http://wp/wp-json/': { json: { routes: { '/custom/v1/acf-sync/(?P<id>\\d+)': { methods: ['POST'] } } } },
     'http://wp/wp-json/wp/v2/tradecard': { json: { id: 1 } },
     'http://wp/wp-json/tradecard/v1/upload-image-from-url': { json: { url: 'http://wp/img.jpg' } },
     'http://wp/wp-json/custom/v1/acf-sync/1': { json: { ok: true } }
