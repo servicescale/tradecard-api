@@ -53,4 +53,14 @@ test('build route performs crawl, inference, push', async () => {
   const steps = res.body.wordpress.details.steps;
   assert.deepEqual(steps.map(s => s.step), ['create','upload_logo','upload_hero','upload_image','upload_image','acf_sync']);
   assert.ok(steps[0].response.ok);
+
+  const acfKeys = res.body.wordpress.details.acf_keys || [];
+  const { allow } = require('../lib/intent').loadIntent('config/field_intent_map.yaml');
+  assert.ok(acfKeys.length > 0);
+  if (allow.has('identity_business_name')) {
+    assert.ok(acfKeys.includes('identity_business_name'));
+  }
+  if (allow.has('identity_website_url')) {
+    assert.ok(acfKeys.includes('identity_website_url'));
+  }
 });
