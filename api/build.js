@@ -122,10 +122,16 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const acfPayload = mapTradecardToAcf(result.tradecard);
+            const { fields: acfPayload, dropped_unknown, dropped_empty } = mapTradecardToAcf(result.tradecard);
             const acf_keys = Object.keys(acfPayload);
             const acf = await acfSync(base, token, postId, acfPayload);
-            steps.push({ step: 'acf_sync', sent_keys: acf_keys, response: { status: acf.status, tried: acf.tried } });
+            steps.push({
+              step: 'acf_sync',
+              sent_keys: acf.sent_keys,
+              dropped_unknown,
+              dropped_empty,
+              response: { status: acf.status }
+            });
             trace.push({ stage: 'push', step: 'acf_sync', ok: acf.ok, status: acf.status });
             const details = { steps, acf_keys };
             wordpress = { ok: acf.ok && create.ok, post_id: postId, details };
