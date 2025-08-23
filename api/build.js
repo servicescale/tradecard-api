@@ -16,9 +16,9 @@ module.exports = async function handler(req, res) {
   const maxPages = Math.min(parseInt(req.query?.maxPages || '12', 10) || 12, 50);
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
-  const doInfer = req.query?.infer === '1';
+  const infer = req.query.infer === '1';
   const doPush = req.query?.push === '1';
-  const resolveMode = req.query?.resolve === 'llm' ? 'llm' : 'hybrid';
+  const resolveMode = (req.query.resolve || 'hybrid');
 
   const trace = [];
 
@@ -27,10 +27,14 @@ module.exports = async function handler(req, res) {
     const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
-    result.raw = JSON.parse(JSON.stringify(result.tradecard));
+    result.raw = {
+      headings: pages.flatMap(p => Object.values(p.headings || {}).flat()),
+      paragraphs: pages.flatMap(p => p.paragraphs || []),
+      images: pages.flatMap(p => p.images || [])
+    };
 
-    trace.push({ stage: 'infer', enabled: doInfer, key_present: !!process.env.OPENAI_API_KEY });
-    if (doInfer) {
+    trace.push({ stage: 'infer', enabled: infer, key_present: !!process.env.OPENAI_API_KEY });
+    if (infer) {
       const inferred = await inferTradecard(result.tradecard);
       trace.push({ stage: 'infer_response', meta: inferred._meta });
       const applied = [];
@@ -124,31 +128,25 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const countFilled = (obj = {}) => {
-              let filled = 0;
-              const walk = (o) => {
-                if (!o || typeof o !== 'object') return;
-                for (const v of Object.values(o)) {
-                  if (v && typeof v === 'object' && !Array.isArray(v)) {
-                    walk(v);
-                  } else if (v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length)) {
-                    filled++;
-                  }
-                }
-              };
-              walk(obj);
-              return filled;
-            };
             trace.push({
               stage: 'intent_input',
-              tradecard: { count: countFilled(result.tradecard) },
-              raw: { count: countFilled(result.raw) }
+              tradecard: {
+                name: !!result.tradecard?.business?.name,
+                website: !!result.tradecard?.contacts?.website,
+                emails: (result.tradecard?.contacts?.emails || []).length,
+                phones: (result.tradecard?.contacts?.phones || []).length,
+                socials: (result.tradecard?.social || []).length,
+                services: (result.tradecard?.services?.list || []).length
+              },
+              raw: {
+                keys: Object.keys(result.raw || {}).length,
+                headings: (result.raw?.headings || []).length,
+                paragraphs: (result.raw?.paragraphs || []).length,
+                images: (result.raw?.images || []).length
+              }
             });
 
-            const intent = await applyIntent(result.tradecard, result.raw, {
-              infer: req.query.infer === '1',
-              resolve: resolveMode,
-            });
+            const intent = await applyIntent(result.tradecard, { raw: result.raw, infer, resolve: resolveMode });
             trace.push({ stage: 'intent', audit: intent.audit });
             if (intent.trace) trace.push(...intent.trace);
             const acf = await acfSync(base, token, postId, intent.fields);
