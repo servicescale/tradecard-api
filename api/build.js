@@ -27,6 +27,7 @@ module.exports = async function handler(req, res) {
     const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
+    result.raw = JSON.parse(JSON.stringify(result.tradecard));
 
     trace.push({ stage: 'infer', enabled: doInfer, key_present: !!process.env.OPENAI_API_KEY });
     if (doInfer) {
@@ -123,7 +124,28 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const intent = await applyIntent(result.tradecard, {
+            const countFilled = (obj = {}) => {
+              let filled = 0;
+              const walk = (o) => {
+                if (!o || typeof o !== 'object') return;
+                for (const v of Object.values(o)) {
+                  if (v && typeof v === 'object' && !Array.isArray(v)) {
+                    walk(v);
+                  } else if (v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length)) {
+                    filled++;
+                  }
+                }
+              };
+              walk(obj);
+              return filled;
+            };
+            trace.push({
+              stage: 'intent_input',
+              tradecard: { count: countFilled(result.tradecard) },
+              raw: { count: countFilled(result.raw) }
+            });
+
+            const intent = await applyIntent(result.tradecard, result.raw, {
               infer: req.query.infer === '1',
               resolve: resolveMode,
             });

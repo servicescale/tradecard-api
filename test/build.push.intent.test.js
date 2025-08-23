@@ -40,8 +40,8 @@ allow:
   assert.equal(intent.fields.service_1_inclusion_1, 'inc1');
 
   const cov = intent.trace.find(t => t.stage === 'intent_coverage');
-  assert.equal(cov.coverage.attempted, 5);
-  assert.equal(cov.coverage.sent, 5);
+  assert.equal(cov.before, 5);
+  assert.equal(cov.after, 5);
 
   const restore = mockFetch({
     'http://wp/wp-json/custom/v1/acf-sync/1': { json: { ok: true } },
