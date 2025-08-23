@@ -18,6 +18,7 @@ module.exports = async function handler(req, res) {
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const doInfer = req.query?.infer === '1';
   const doPush = req.query?.push === '1';
+  const resolveMode = req.query?.resolve === 'llm' ? 'llm' : 'hybrid';
 
   const trace = [];
 
@@ -122,7 +123,10 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const intent = await applyIntent(result.tradecard, { infer: req.query.infer === '1' });
+            const intent = await applyIntent(result.tradecard, {
+              infer: req.query.infer === '1',
+              resolve: resolveMode,
+            });
             trace.push({ stage: 'intent', audit: intent.audit });
             if (intent.trace) trace.push(...intent.trace);
             const acf = await acfSync(base, token, postId, intent.fields);
