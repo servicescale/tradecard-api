@@ -125,7 +125,7 @@ categories.forEach((c) => {
     intent: 0,
     intersection: 0,
     missing_in_intent: 0,
-    extra_in_intent: 0
+    extra_in_intent: 0,
   };
 });
 
@@ -160,10 +160,15 @@ const total = {
   intent: intentAllow.size,
   intersection: [...schemaAllow].filter((k) => intentAllow.has(k)).length,
   missing_in_intent: [...schemaAllow].filter((k) => !intentAllow.has(k)).length,
-  extra_in_intent: [...intentAllow].filter((k) => !schemaAllow.has(k)).length
+  extra_in_intent: [...intentAllow].filter((k) => !schemaAllow.has(k)).length,
 };
 
-console.table([total, ...categories.map((c) => stats[c])]);
+const summary = {
+  total,
+  categories: categories.map((c) => stats[c]),
+};
+
+console.log(JSON.stringify(summary, null, 2));
 
 // Optional run mode
 const runIndex = process.argv.indexOf('--run');
@@ -173,7 +178,9 @@ if (runIndex !== -1) {
     console.error('Missing target URL after --run');
     process.exit(1);
   }
-  const url = `http://localhost:3000/api/build?url=${encodeURIComponent(target)}&push=1&debug=1`;
+  const url = `http://localhost:3000/api/build?url=${encodeURIComponent(
+    target
+  )}&push=1&debug=1`;
   http
     .get(url, (res) => {
       let data = '';
@@ -181,12 +188,17 @@ if (runIndex !== -1) {
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
-          const sent = Array.isArray(json.sent_keys) ? json.sent_keys : [];
-          console.log('sent_keys count:', sent.length);
-          const missingAllowed = [...schemaAllow].filter((k) => !sent.includes(k));
-          const extraSent = sent.filter((k) => !schemaAllow.has(k));
-          console.log('missing allowed keys:', missingAllowed.slice(0, 10));
-          console.log('extra sent keys:', extraSent.slice(0, 10));
+          const steps = Array.isArray(json.steps) ? json.steps : [];
+          const acf = steps.find((s) => s.name === 'acf_sync') || {};
+          const sent = Array.isArray(acf.sent_keys) ? acf.sent_keys : [];
+          const result = {
+            sent_keys_count: sent.length,
+            status: acf.status || null,
+            sample_allowed_but_not_sent: [...schemaAllow]
+              .filter((k) => !sent.includes(k))
+              .slice(0, 10),
+          };
+          console.log(JSON.stringify(result, null, 2));
         } catch (err) {
           console.error('Invalid JSON response:', err.message);
         }
