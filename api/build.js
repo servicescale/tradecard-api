@@ -123,12 +123,8 @@ module.exports = async function handler(req, res) {
 
           if (postId) {
             const intent = await applyIntent(result.tradecard, { infer: req.query.infer === '1' });
+            trace.push({ stage: 'intent', audit: intent.audit });
             const acf = await acfSync(base, token, postId, intent.fields);
-            const auditSummary = intent.audit.reduce((acc, a) => {
-              acc[a.status] = (acc[a.status] || 0) + 1;
-              return acc;
-            }, {});
-            trace.push({ stage: 'intent', counts: auditSummary });
             steps.push({
               step: 'acf_sync',
               sent_keys: intent.sent_keys,
