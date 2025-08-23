@@ -124,6 +124,7 @@ module.exports = async function handler(req, res) {
           if (postId) {
             const intent = await applyIntent(result.tradecard, { infer: req.query.infer === '1' });
             trace.push({ stage: 'intent', audit: intent.audit });
+            if (intent.trace) trace.push(...intent.trace);
             const acf = await acfSync(base, token, postId, intent.fields);
             steps.push({
               step: 'acf_sync',
