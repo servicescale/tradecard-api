@@ -4,10 +4,7 @@ const mockFetch = require('./helpers/mockFetch');
 const resetEnv = require('./helpers/resetEnv');
 const buildLib = require('../lib/build');
 const intentLib = require('../lib/intent');
-const { mapTradecardToAcf } = require('../lib/mapAcf');
 const { loadIntent } = intentLib;
-const realApplyIntent = intentLib.applyIntent;
-intentLib.applyIntent = (tc) => realApplyIntent(mapTradecardToAcf(tc).fields);
 
 test('build route performs crawl, inference, push', async () => {
   buildLib.crawlSite = async () => [{

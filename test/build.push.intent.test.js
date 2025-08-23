@@ -2,17 +2,16 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
+
 const mockFetch = require('./helpers/mockFetch');
 
 const { acfSync } = require('../lib/wp');
 
-test('applyIntent push increases sent_keys and audit ok', async () => {
+test('applyIntent default sources send identity fields', async () => {
   const yaml = `
-name:
-  source: business.name
-phone:
-  source: contacts.phone
-  transforms: digits
+allow:
+  - identity_business_name
+  - identity_website_url
 `;
   const tmp = path.join(__dirname, 'intent.push.yaml');
   fs.writeFileSync(tmp, yaml);
@@ -20,11 +19,15 @@ phone:
   const { loadIntent, applyIntent } = require('../lib/intent');
   loadIntent(tmp);
 
-  const tc = { business: { name: 'Biz' }, contacts: { phone: '123 456' } };
+  const tc = {
+    business: { name: 'Biz' },
+    contacts: { website: 'http://example.com' }
+  };
+
   const intent = await applyIntent(tc);
-  const baseline = 1;
-  assert.ok(intent.sent_keys.length > baseline);
-  assert.ok(intent.audit.every(a => a.status === 'ok'));
+
+  assert.ok(intent.sent_keys.includes('identity_business_name'));
+  assert.ok(intent.sent_keys.includes('identity_website_url'));
 
   const restore = mockFetch({
     'http://wp/wp-json/custom/v1/acf-sync/1': { json: { ok: true } },
@@ -36,3 +39,4 @@ phone:
   fs.unlinkSync(tmp);
   delete require.cache[require.resolve('../lib/intent')];
 });
+
