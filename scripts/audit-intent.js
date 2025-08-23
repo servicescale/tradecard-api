@@ -6,10 +6,15 @@ const YAML = require('yaml');
 const http = require('http');
 
 // Load and expand intent map
-const raw = fs.readFileSync('config/field_intent_map.yaml', 'utf8');
-const parsed = YAML.parse(raw);
+const configPath = 'config/field_intent_map.yaml';
+if (!fs.existsSync(configPath)) {
+  console.error(`Missing ${configPath}`);
+  process.exit(1);
+}
+const text = fs.readFileSync(configPath, 'utf8');
+const doc = YAML.parse(text) || {};
 const intentAllow = new Set();
-Object.keys(parsed || {}).forEach((key) => {
+Object.keys(doc).forEach((key) => {
   if (key.includes('service_{i}_')) {
     [1, 2, 3].forEach((i) => intentAllow.add(key.replace('{i}', i)));
   } else {
