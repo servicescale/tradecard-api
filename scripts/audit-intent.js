@@ -25,6 +25,7 @@ Object.keys(doc).forEach((key) => {
 // Build ACF schema allow set
 const identityFields = [
   'business_name',
+  'business_type',
   'website_url',
   'email',
   'phone',
@@ -36,9 +37,12 @@ const identityFields = [
   'owner_name',
   'role_title',
   'headshot_url',
+  'insured',
   'website',
   'location_label',
   'services',
+  'display_name',
+  'verified',
   'uri_phone',
   'uri_email',
   'uri_sms',
@@ -70,7 +74,9 @@ const trustFields = [
   'review_button_link',
   'profile_video_url',
   'contact_form',
-  'vcf_url'
+  'vcf_url',
+  'award',
+  'award_link'
 ];
 const themeFields = ['primary_color', 'accent_color'];
 const serviceFields = [
