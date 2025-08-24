@@ -4,6 +4,7 @@
 const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
+const { inferTradecard } = require('../lib/infer');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -22,6 +23,27 @@ module.exports = async function handler(req, res) {
     const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
+
+    const inferred = await inferTradecard(result.tradecard);
+    trace.push({ stage: 'infer', ...inferred._meta });
+    if (inferred._meta?.ok) {
+      if (inferred.business?.description) {
+        result.tradecard.business.description = inferred.business.description;
+      }
+      if (inferred.services?.list) {
+        result.tradecard.services.list = inferred.services.list;
+      }
+      if (inferred.service_areas !== undefined) {
+        result.tradecard.service_areas = inferred.service_areas;
+      }
+      if (inferred.brand?.tone) {
+        result.tradecard.brand.tone = inferred.brand.tone;
+      }
+      if (inferred.testimonials !== undefined) {
+        result.tradecard.testimonials = inferred.testimonials;
+      }
+    }
+
     const raw = {
       anchors: (pages || [])
         .flatMap((p) => p.anchors || p.links || [])
