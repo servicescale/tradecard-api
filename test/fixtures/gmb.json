@@ -1,0 +1,10 @@
+{
+  "testimonials": [
+    {
+      "quote": "Excellent work.",
+      "reviewer": "Alice",
+      "location": "Sydney",
+      "source_url": "https://maps.google.com/?cid=2"
+    }
+  ]
+}

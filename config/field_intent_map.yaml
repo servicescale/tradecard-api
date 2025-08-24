@@ -676,7 +676,7 @@ testimonial_location:
     must_be_valid_location: true
 
 testimonial_quote:
-  priority: required
+  priority: required_if_testimonial
   tools: [site_scraper, gmb_lookup]
   fallback: false
   constraints:
@@ -684,7 +684,7 @@ testimonial_quote:
     reviewer_required: true
 
 testimonial_reviewer:
-  priority: required
+  priority: required_if_testimonial
   tools: [site_scraper, gmb_lookup]
   fallback: false
   constraints:
