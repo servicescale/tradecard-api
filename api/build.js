@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
     const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
-    result.raw = {
+    const raw = {
       anchors: pages.flatMap((p) =>
         Array.isArray(p.anchors)
           ? p.anchors.map((a) => ({ href: a.href || a, text: a.text || '' }))
@@ -42,15 +42,39 @@ module.exports = async function handler(req, res) {
       jsonld: pages[0]?.jsonld || pages[0]?.schema || {},
       url: startUrl
     };
+    result.raw = raw;
 
-    trace.push({
-      stage: 'intent_input',
-      tradecard: {
-        name: !!result.tradecard?.business?.name,
-        website: !!result.tradecard?.contacts?.website
-      },
-      raw_keys: Object.keys(result.raw || {}).length
-    });
+    const raw_counts = {
+      anchors: raw.anchors.length,
+      headings: raw.headings.length,
+      paragraphs: raw.paragraphs.length,
+      images: raw.images.length,
+      meta: Object.keys(raw.meta || {}).length,
+      jsonld: Array.isArray(raw.jsonld)
+        ? raw.jsonld.length
+        : Object.keys(raw.jsonld || {}).length
+    };
+
+    const countStrings = (obj) => {
+      let n = 0;
+      if (!obj || typeof obj !== 'object') return n;
+      for (const v of Object.values(obj)) {
+        if (typeof v === 'string') {
+          if (v.trim()) n++;
+        } else if (Array.isArray(v)) {
+          for (const item of v) {
+            if (typeof item === 'string' && item.trim()) n++;
+            else if (item && typeof item === 'object') n += countStrings(item);
+          }
+        } else if (v && typeof v === 'object') {
+          n += countStrings(v);
+        }
+      }
+      return n;
+    };
+    const tradecard_counts = countStrings(result.tradecard);
+
+    trace.push({ stage: 'intent_input', tradecard_counts, raw_counts });
 
     trace.push({ stage: 'infer', enabled: infer, key_present: !!process.env.OPENAI_API_KEY });
     if (infer) {
@@ -97,13 +121,23 @@ module.exports = async function handler(req, res) {
       trace.push({ stage: 'infer_merge', applied });
     }
 
-    const intent = await applyIntent(result.tradecard, { raw: result.raw, resolve: req.query.resolve || 'llm' });
+    const intent = await applyIntent(result.tradecard, {
+      raw,
+      resolve: req.query.resolve || 'llm'
+    });
     trace.push({ stage: 'intent', audit: intent.audit });
     if (intent.trace) trace.push(...intent.trace);
 
-    const minKeys = parseInt(process.env.MIN_ACF_KEYS || '10', 10);
+    const minKeys = Number(process.env.MIN_ACF_KEYS) || 10;
     if (intent.sent_keys.length < minKeys) {
-      return res.status(422).json({ ok: false, reason: 'thin_payload', sent: intent.sent_keys.length, sample: intent.sent_keys.slice(0, 10) });
+      const debug = req.query?.debug === '1' ? { trace } : undefined;
+      return res.status(422).json({
+        ok: false,
+        reason: 'thin_payload',
+        sent: intent.sent_keys.length,
+        sample: intent.sent_keys.slice(0, 10),
+        debug
+      });
     }
 
     let wordpress;
