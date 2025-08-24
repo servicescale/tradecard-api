@@ -1,13 +1,9 @@
 // /api/build.js
-// Build a TradeCard JSON from crawling a site. Optional OpenAI inference and WordPress push.
+// Build a TradeCard JSON from crawling a site. Optional WordPress push.
 
 const { crawlSite, buildTradecardFromPages } = require('../lib/build');
-const { inferTradecard } = require('../lib/infer');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
-const { pickBest } = require('../lib/resolve');
-
-const INFER_THRESHOLD = parseFloat(process.env.INFER_THRESHOLD || '0.7');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -16,15 +12,17 @@ module.exports = async function handler(req, res) {
   const maxPages = Math.min(parseInt(req.query?.maxPages || '12', 10) || 12, 50);
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
-  const infer = req.query.infer === '1';
+  const resolveMode = req.query.resolve || 'llm';
   const doPush = req.query?.push === '1';
   const trace = [];
+  const debug = { trace };
 
   try {
     const t0 = Date.now();
     const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
+    const jsonld = pages[0]?.jsonld || pages[0]?.schema;
     const raw = {
       anchors: pages.flatMap((p) =>
         Array.isArray(p.anchors)
@@ -39,98 +37,35 @@ module.exports = async function handler(req, res) {
         (p.images || []).map((img) => ({ src: img.src || img, alt: img.alt || '' }))
       ),
       meta: pages[0]?.meta || {},
-      jsonld: pages[0]?.jsonld || pages[0]?.schema || {},
+      jsonld: Array.isArray(jsonld) ? jsonld : jsonld ? [jsonld] : [],
       url: startUrl
     };
     result.raw = raw;
 
-    const raw_counts = {
-      anchors: raw.anchors.length,
-      headings: raw.headings.length,
-      paragraphs: raw.paragraphs.length,
-      images: raw.images.length,
-      meta: Object.keys(raw.meta || {}).length,
-      jsonld: Array.isArray(raw.jsonld)
-        ? raw.jsonld.length
-        : Object.keys(raw.jsonld || {}).length
-    };
-
-    const countStrings = (obj) => {
-      let n = 0;
-      if (!obj || typeof obj !== 'object') return n;
-      for (const v of Object.values(obj)) {
-        if (typeof v === 'string') {
-          if (v.trim()) n++;
-        } else if (Array.isArray(v)) {
-          for (const item of v) {
-            if (typeof item === 'string' && item.trim()) n++;
-            else if (item && typeof item === 'object') n += countStrings(item);
-          }
-        } else if (v && typeof v === 'object') {
-          n += countStrings(v);
-        }
+    trace.push({
+      stage: 'intent_input',
+      tradecard_counts: {
+        name: !!result.tradecard?.business?.name,
+        website: !!result.tradecard?.contacts?.website
+      },
+      raw_counts: {
+        anchors: (result.raw?.anchors || []).length,
+        headings: (result.raw?.headings || []).length,
+        paragraphs: (result.raw?.paragraphs || []).length,
+        images: (result.raw?.images || []).length,
+        meta: Object.keys(result.raw?.meta || {}).length,
+        jsonld: (result.raw?.jsonld || []).length
       }
-      return n;
-    };
-    const tradecard_counts = countStrings(result.tradecard);
-
-    trace.push({ stage: 'intent_input', tradecard_counts, raw_counts });
-
-    trace.push({ stage: 'infer', enabled: infer, key_present: !!process.env.OPENAI_API_KEY });
-    if (infer) {
-      const inferred = await inferTradecard(result.tradecard);
-      trace.push({ stage: 'infer_response', meta: inferred._meta });
-      const applied = [];
-      delete inferred._meta;
-
-      const desc = pickBest(inferred.business || {}, 'description');
-      if (desc.value !== undefined && desc.confidence >= INFER_THRESHOLD) {
-        result.tradecard.business.description = desc.value;
-        applied.push({ key: 'business.description', confidence: desc.confidence });
-        result.needs_inference = result.needs_inference.filter(k => k !== 'business.description');
-      }
-
-      const servicesList = pickBest(inferred.services || {}, 'list');
-      if (Array.isArray(servicesList.value) && servicesList.confidence >= INFER_THRESHOLD) {
-        result.tradecard.services.list = servicesList.value;
-        applied.push({ key: 'services.list', confidence: servicesList.confidence });
-        result.needs_inference = result.needs_inference.filter(k => k !== 'services.list');
-      }
-
-      const areas = pickBest(inferred, 'service_areas');
-      if (Array.isArray(areas.value) && areas.confidence >= INFER_THRESHOLD) {
-        result.tradecard.service_areas = areas.value;
-        applied.push({ key: 'service_areas', confidence: areas.confidence });
-        result.needs_inference = result.needs_inference.filter(k => k !== 'service_areas');
-      }
-
-      const tone = pickBest(inferred.brand || {}, 'tone');
-      if (tone.value !== undefined && tone.confidence >= INFER_THRESHOLD) {
-        result.tradecard.brand.tone = tone.value;
-        applied.push({ key: 'brand.tone', confidence: tone.confidence });
-        result.needs_inference = result.needs_inference.filter(k => k !== 'brand.tone');
-      }
-
-      const testi = pickBest(inferred, 'testimonials');
-      if (Array.isArray(testi.value) && testi.confidence >= INFER_THRESHOLD) {
-        result.tradecard.testimonials = testi.value;
-        applied.push({ key: 'testimonials', confidence: testi.confidence });
-        result.needs_inference = result.needs_inference.filter(k => k !== 'testimonials');
-      }
-
-      trace.push({ stage: 'infer_merge', applied });
-    }
+    });
 
     const intent = await applyIntent(result.tradecard, {
-      raw,
-      resolve: req.query.resolve || 'llm'
+      raw: result.raw,
+      resolve: resolveMode
     });
-    trace.push({ stage: 'intent', audit: intent.audit });
-    if (intent.trace) trace.push(...intent.trace);
+    if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
     const minKeys = Number(process.env.MIN_ACF_KEYS) || 10;
     if (intent.sent_keys.length < minKeys) {
-      const debug = req.query?.debug === '1' ? { trace } : undefined;
       return res.status(422).json({
         ok: false,
         reason: 'thin_payload',
@@ -210,7 +145,7 @@ module.exports = async function handler(req, res) {
     result.wordpress = wordpress;
 
     const output = result;
-    if (req.query?.debug === '1') output.debug = { trace };
+    if (req.query?.debug === '1') output.debug = debug;
 
     return res.status(200).json(output);
   } catch (err) {
