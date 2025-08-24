@@ -73,6 +73,8 @@ trust_google_review_count: null
 trust_google_review_url: null
 trust_review_button_link: null
 trust_profile_video_url: null
+trust_award: null
+trust_award_link: null
 theme_accent_color: null
 trust_contact_form: null
 theme_primary_color: null

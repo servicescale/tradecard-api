@@ -24,3 +24,12 @@ test('parse extracts canonical images, headings, socials, contacts', async () =>
   assert.deepEqual(page.contacts.emails, ['info@example.com']);
   assert.deepEqual(page.contacts.phones, ['+123456']);
 });
+
+test('parse captures videos, contact forms, awards and theme colors', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/trust_theme.html'), 'utf8');
+  const page = await parse(html, 'https://example.com');
+  assert.equal(page.theme_colors.primary, '#336699');
+  assert.deepEqual(page.contact_form_links, ['https://example.com/contact']);
+  assert.ok(page.profile_videos.includes('https://youtube.com/watch?v=abc'));
+  assert.equal(page.awards[0].text, 'Best Award 2023');
+});
