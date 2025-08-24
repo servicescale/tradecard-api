@@ -145,6 +145,8 @@ identity_website_url:
   fallback: false
 
 # ===== Service Panels =====
+# TODO: Add service panels mapping
+=======
 # <full 02_service_panels.yaml from patch>
 # Common constraints for inclusions
 _inclusion_constraints: &_inclusion_constraints
@@ -455,6 +457,7 @@ account_subscription:
   constraints:
     min_length: 2
 # ===== Trust & Visual =====
+# TODO: Add trust & visual mapping
 # <full 03_trust_visual.yaml from patch>
 trust_qr_text:
   priority: required
@@ -549,6 +552,7 @@ trust_vcf_url:
   tools: []
   fallback: false
 # ===== Social Links =====
+# TODO: Add social links mapping
 # <full 04_social_links.yaml from patch>
 social_links_facebook:
   priority: recommended
@@ -657,6 +661,7 @@ service_areas_csv:
   constraints:
     format: csv
 # ===== Testimonials =====
+# TODO: Add testimonials mapping
 # <full 05_testimonials.yaml from patch>
 testimonial_location:
   priority: required_if_testimonial
