@@ -20,7 +20,10 @@ test('parse extracts canonical images, headings, socials, contacts', async () =>
   assert.deepEqual(page.headings.h3, ['H3']);
   assert.ok(page.images.every(u => u.startsWith('http://example.com/') && !u.includes('?') && !u.includes('#')));
   assert.equal(new Set(page.images).size, page.images.length);
-  assert.ok(page.social.find(s => s.platform === 'facebook'));
+  const plats = ['facebook','instagram','linkedin','twitter','youtube','tiktok','pinterest'];
+  for (const p of plats) {
+    assert.ok(page.social.find(s => s.platform === p), `missing ${p}`);
+  }
   assert.deepEqual(page.contacts.emails, ['info@example.com']);
   assert.deepEqual(page.contacts.phones, ['+123456']);
 });

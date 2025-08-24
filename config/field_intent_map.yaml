@@ -647,7 +647,7 @@ social_links_youtube:
     reject_placeholders: ["#", "/", ""]
     strip_query_params: ["utm_", "fbclid"]
     lowercase_except_protocol: true
-    must_contain: "youtube.com"
+    must_contain_any: ["youtube.com", "youtu.be"]
 
 business_description:
   priority: recommended
