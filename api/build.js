@@ -31,23 +31,18 @@ module.exports = async function handler(req, res) {
       paragraphs: pages.flatMap((p) => p.paragraphs || []),
       images: pages.flatMap((p) => (p.images || []).map((src) => ({ src, alt: '' }))),
       meta: pages[0]?.meta || {},
-      jsonld: pages[0]?.schema,
+      jsonld: pages[0]?.schema || {},
       url: startUrl
     };
 
-    const tradecard_counts = {
-      emails: result.tradecard.contacts.emails.length,
-      phones: result.tradecard.contacts.phones.length,
-      socials: result.tradecard.social.length,
-      images: result.tradecard.assets.images.length
-    };
-    const raw_counts = {
-      anchors: result.raw.anchors.length,
-      headings: result.raw.headings.length,
-      paragraphs: result.raw.paragraphs.length,
-      images: result.raw.images.length
-    };
-    trace.push({ stage: 'intent_input', tradecard_counts, raw_counts });
+    trace.push({
+      stage: 'intent_input',
+      tradecard: {
+        name: !!result.tradecard?.business?.name,
+        website: !!result.tradecard?.contacts?.website
+      },
+      raw_keys: Object.keys(result.raw || {}).length
+    });
 
     trace.push({ stage: 'infer', enabled: infer, key_present: !!process.env.OPENAI_API_KEY });
     if (infer) {
@@ -98,7 +93,8 @@ module.exports = async function handler(req, res) {
     trace.push({ stage: 'intent', audit: intent.audit });
     if (intent.trace) trace.push(...intent.trace);
 
-    if (intent.sent_keys.length < 10) {
+    const minKeys = parseInt(process.env.MIN_ACF_KEYS || '10', 10);
+    if (intent.sent_keys.length < minKeys) {
       return res.status(422).json({ ok: false, reason: 'thin_payload', sent: intent.sent_keys.length, sample: intent.sent_keys.slice(0, 10) });
     }
 

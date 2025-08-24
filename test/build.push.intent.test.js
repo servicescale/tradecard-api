@@ -32,7 +32,17 @@ test('applyIntent uses LLM and returns fields', async () => {
     }
   });
 
-  const intent = await applyIntent({}, { raw: { links: ['mailto:a@b.com', 'tel:123'], headings: ['h'], paragraphs: ['p'], images: ['img'] } });
+  const intent = await applyIntent({}, {
+    raw: {
+      anchors: [
+        { href: 'mailto:a@b.com' },
+        { href: 'tel:123' }
+      ],
+      headings: ['h'],
+      paragraphs: ['p'],
+      images: [{ src: 'img', alt: '' }]
+    }
+  });
   restore();
 
   assert.equal(intent.fields.identity_business_name, 'Biz');

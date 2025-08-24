@@ -28,7 +28,7 @@ test('resolveWithLLM returns allowed keys only', async () => {
   const { fields, audit } = await resolveWithLLM({
     raw: {},
     hints: {},
-    allowKeys: ['identity_business_name', 'identity_phone']
+    allowKeys: new Set(['identity_business_name', 'identity_phone'])
   });
   restore();
 

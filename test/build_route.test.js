@@ -25,9 +25,9 @@ test('build route performs crawl, inference, push', async () => {
         identity_email: 'a@b.com',
         identity_phone: '123',
         business_description: 'Desc',
-        service_1_title: 'S1',
-        service_1_description: 'D1',
-        service_1_image_url: 'i1',
+        service_2_title: 'S1',
+        service_2_description: 'D1',
+        service_2_image_url: 'i1',
         service_areas_csv: 'A',
         social_links_facebook: 'fb'
       }) } } ] } }
