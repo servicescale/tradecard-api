@@ -26,12 +26,20 @@ module.exports = async function handler(req, res) {
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
     result.raw = {
-      anchors: pages.flatMap((p) => (p.links || []).map((href) => ({ href, text: '' }))),
-      headings: pages.flatMap((p) => Object.values(p.headings || {}).flat()),
+      anchors: pages.flatMap((p) =>
+        Array.isArray(p.anchors)
+          ? p.anchors.map((a) => ({ href: a.href || a, text: a.text || '' }))
+          : (p.links || []).map((href) => ({ href, text: '' }))
+      ),
+      headings: pages.flatMap((p) =>
+        Array.isArray(p.headings) ? p.headings : Object.values(p.headings || {}).flat()
+      ),
       paragraphs: pages.flatMap((p) => p.paragraphs || []),
-      images: pages.flatMap((p) => (p.images || []).map((src) => ({ src, alt: '' }))),
+      images: pages.flatMap((p) =>
+        (p.images || []).map((img) => ({ src: img.src || img, alt: img.alt || '' }))
+      ),
       meta: pages[0]?.meta || {},
-      jsonld: pages[0]?.schema || {},
+      jsonld: pages[0]?.jsonld || pages[0]?.schema || {},
       url: startUrl
     };
 
