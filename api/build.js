@@ -94,8 +94,9 @@ module.exports = async function handler(req, res) {
     const missingRequired = required.filter(k => !presentSet.has(k));
     const isPush = req.query.push==='1'||req.query.push===1||req.query.push===true||req.query.push==='true';
     if (isPush && missingRequired.length) {
-      debug.trace.push({stage:"policy_check", missingRequired, required});
-      return res.status(422).json({ ok:false, reason:"policy_failed", missingRequired, debug });
+      debug.trace.push({ stage: 'policy_check', missingRequired, required });
+      const reason = resolveMode === 'none' ? 'thin_payload' : 'policy_failed';
+      return res.status(422).json({ ok: false, reason, missingRequired, debug });
     }
     let wordpress;
     if (isPush) {
