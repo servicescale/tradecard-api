@@ -35,6 +35,7 @@ test('parse captures videos, contact forms, awards and theme colors', async () =
   assert.deepEqual(page.contact_form_links, ['https://example.com/contact']);
   assert.ok(page.profile_videos.includes('https://youtube.com/watch?v=abc'));
   assert.equal(page.awards[0].text, 'Best Award 2023');
+});
 
 test('parse extracts on-site testimonials', async () => {
   const html = fs.readFileSync(path.join(__dirname, 'fixtures/testimonial.html'), 'utf8');
