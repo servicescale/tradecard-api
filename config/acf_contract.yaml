@@ -50,7 +50,22 @@ allow:
   - trust_contact_form
   - trust_vcf_url
   - trust_award
-  - trsut_award_link
+  - trust_award_link
+  - service_1_title
+  - service_1_subtitle
+  - service_1_image_url
+  - service_1_price_note
+  - service_1_description
+  - service_1_cta_label
+  - service_1_cta_link
+  - service_1_delivery_modes
+  - service_1_inclusion_1
+  - service_1_inclusion_2
+  - service_1_inclusion_3
+  - service_1_tags
+  - service_1_video_url
+  - service_1_price
+  - service_1_panel_tag
   - service_2_title
   - service_2_subtitle
   - service_2_image_url
@@ -65,6 +80,7 @@ allow:
   - service_2_tags
   - service_2_video_url
   - service_2_price
+  - service_2_panel_tag
   - service_3_title
   - service_3_subtitle
   - service_3_image_url
@@ -79,6 +95,7 @@ allow:
   - service_3_tags
   - service_3_video_url
   - service_3_price
+  - service_3_panel_tag
   # optionally include, if you choose to allow them:
   - account_company
   - account_subscription

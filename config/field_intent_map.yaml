@@ -146,6 +146,8 @@ identity_website_url:
 
 # ===== Service Panels =====
 # TODO: Add service panels mapping
+=======
+# <full 02_service_panels.yaml from patch>
 # Common constraints for inclusions
 _inclusion_constraints: &_inclusion_constraints
   reject_values:
@@ -440,8 +442,23 @@ service_3_panel_tag:
   fallback: false
   constraints:
     allowed_values: ["featured service", "featured project", "featured product"]
+
+account_company:
+  priority: optional
+  tools: []
+  fallback: false
+  constraints:
+    min_length: 2
+
+account_subscription:
+  priority: optional
+  tools: []
+  fallback: false
+  constraints:
+    min_length: 2
 # ===== Trust & Visual =====
 # TODO: Add trust & visual mapping
+# <full 03_trust_visual.yaml from patch>
 trust_qr_text:
   priority: required
   tools: []
@@ -492,6 +509,20 @@ trust_profile_video_url:
       - "youtu.be"
       - "vimeo.com"
 
+trust_award:
+  priority: optional
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    min_length: 2
+
+trust_award_link:
+  priority: recommended_if_trust_award
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    format: url
+
 theme_accent_color:
   priority: required
   tools: []
@@ -522,6 +553,7 @@ trust_vcf_url:
   fallback: false
 # ===== Social Links =====
 # TODO: Add social links mapping
+# <full 04_social_links.yaml from patch>
 social_links_facebook:
   priority: recommended
   tools: [site_scraper]
@@ -613,8 +645,24 @@ social_links_youtube:
     strip_query_params: ["utm_", "fbclid"]
     lowercase_except_protocol: true
     must_contain: "youtube.com"
+
+business_description:
+  priority: recommended
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    min_words: 20
+    max_length: 240
+
+service_areas_csv:
+  priority: optional
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    format: csv
 # ===== Testimonials =====
 # TODO: Add testimonials mapping
+# <full 05_testimonials.yaml from patch>
 testimonial_location:
   priority: required_if_testimonial
   tools: [site_scraper, gmb_lookup]
