@@ -13,6 +13,7 @@ module.exports = async function handler(req, res) {
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const resolveMode = req.query.resolve || 'llm';
+  const min = Number(process.env.MIN_ACF_KEYS) || 10;
   const doPush = req.query?.push === '1';
   const trace = [];
   const debug = { trace };
@@ -22,25 +23,17 @@ module.exports = async function handler(req, res) {
     const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
-    const jsonld = pages[0]?.jsonld || pages[0]?.schema;
     const raw = {
-      anchors: pages.flatMap((p) =>
-        Array.isArray(p.anchors)
-          ? p.anchors.map((a) => ({ href: a.href || a, text: a.text || '' }))
-          : (p.links || []).map((href) => ({ href, text: '' }))
-      ),
-      headings: pages.flatMap((p) =>
-        Array.isArray(p.headings) ? p.headings : Object.values(p.headings || {}).flat()
-      ),
+      anchors: pages.flatMap((p) => p.links || []).map((l) => ({ href: l.href, text: l.text || '' })),
+      headings: pages
+        .flatMap((p) => Object.values(p.headings || {}))
+        .flat()
+        .map((h) => ({ text: h })),
       paragraphs: pages.flatMap((p) => p.paragraphs || []),
-      images: pages.flatMap((p) =>
-        (p.images || []).map((img) => ({ src: img.src || img, alt: img.alt || '' }))
-      ),
+      images: pages.flatMap((p) => (p.images || []).map((i) => ({ src: i.src, alt: i.alt || '' }))),
       meta: pages[0]?.meta || {},
-      jsonld: Array.isArray(jsonld) ? jsonld : jsonld ? [jsonld] : [],
-      url: startUrl
+      jsonld: pages[0]?.jsonld || pages[0]?.schema || []
     };
-    result.raw = raw;
 
     trace.push({
       stage: 'intent_input',
@@ -49,23 +42,19 @@ module.exports = async function handler(req, res) {
         website: !!result.tradecard?.contacts?.website
       },
       raw_counts: {
-        anchors: (result.raw?.anchors || []).length,
-        headings: (result.raw?.headings || []).length,
-        paragraphs: (result.raw?.paragraphs || []).length,
-        images: (result.raw?.images || []).length,
-        meta: Object.keys(result.raw?.meta || {}).length,
-        jsonld: (result.raw?.jsonld || []).length
+        anchors: (raw.anchors || []).length,
+        headings: (raw.headings || []).length,
+        paragraphs: (raw.paragraphs || []).length,
+        images: (raw.images || []).length,
+        meta: Object.keys(raw.meta || {}).length,
+        jsonld: (raw.jsonld || []).length
       }
     });
 
-    const intent = await applyIntent(result.tradecard, {
-      raw: result.raw,
-      resolve: resolveMode
-    });
+    const intent = await applyIntent(result.tradecard, { raw, resolve: resolveMode });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
-    const minKeys = Number(process.env.MIN_ACF_KEYS) || 10;
-    if (intent.sent_keys.length < minKeys) {
+    if (intent.sent_keys.length < min) {
       return res.status(422).json({
         ok: false,
         reason: 'thin_payload',
