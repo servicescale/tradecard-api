@@ -62,6 +62,7 @@ test('resolveWithLLM targets missing keys', async () => {
   assert.deepEqual(user.targets, ['service_2_title']);
 });
 
+
 test('resolveWithLLM includes extra raw fields in pruned payload', async () => {
   resetEnv({ OPENAI_API_KEY: 'k' });
   let body;
@@ -73,6 +74,7 @@ test('resolveWithLLM includes extra raw fields in pruned payload', async () => {
     social: [{ platform: 'facebook', url: 'https://fb.com/x' }],
     contacts: { emails: ['e@x.com'], phones: ['123'] }
   };
+
   const restore = mockFetch({
     'https://api.openai.com/v1/chat/completions': (url, opts) => {
       body = JSON.parse(opts.body);
@@ -80,6 +82,15 @@ test('resolveWithLLM includes extra raw fields in pruned payload', async () => {
     }
   });
 
+  await resolveWithLLM({
+    raw: {},
+    hints: {},
+    context: { business_name: 'Ctx Biz' },
+    allowKeys: new Set(['identity_business_name'])
+  });
+  const user = JSON.parse(body.messages[1].content);
+  restore();
+  assert.equal(user.context.business_name, 'Ctx Biz');
   await resolveWithLLM({ raw, allowKeys: new Set(['some']) });
   restore();
   const pruned = JSON.parse(body.messages[1].content).raw_pruned;
