@@ -20,7 +20,10 @@ test('parse extracts canonical images, headings, socials, contacts', async () =>
   assert.deepEqual(page.headings.h3, ['H3']);
   assert.ok(page.images.every(u => u.startsWith('http://example.com/') && !u.includes('?') && !u.includes('#')));
   assert.equal(new Set(page.images).size, page.images.length);
-  assert.ok(page.social.find(s => s.platform === 'facebook'));
+  const plats = ['facebook','instagram','linkedin','twitter','youtube','tiktok','pinterest'];
+  for (const p of plats) {
+    assert.ok(page.social.find(s => s.platform === p), `missing ${p}`);
+  }
   assert.deepEqual(page.contacts.emails, ['info@example.com']);
   assert.deepEqual(page.contacts.phones, ['+123456']);
 });
@@ -32,4 +35,17 @@ test('parse captures videos, contact forms, awards and theme colors', async () =
   assert.deepEqual(page.contact_form_links, ['https://example.com/contact']);
   assert.ok(page.profile_videos.includes('https://youtube.com/watch?v=abc'));
   assert.equal(page.awards[0].text, 'Best Award 2023');
+
+test('parse extracts on-site testimonials', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/testimonial.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.ok(Array.isArray(page.testimonials));
+  assert.deepEqual(page.testimonials[0], {
+    quote: 'Great job on our deck.',
+    reviewer: 'Jane Smith',
+    location: 'Melbourne',
+    source_label: 'Google Reviews',
+    source_url: 'https://maps.google.com/?cid=1',
+    job_type: 'Deck installation'
+  });
 });
