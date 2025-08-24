@@ -18,11 +18,11 @@ test('build route returns 422 on thin payload when push=1', async () => {
   }];
 
   resetEnv({ OPENAI_API_KEY: 'k' });
+  let body;
   const restore = mockFetch({
-    'https://api.openai.com/v1/chat/completions': {
-      json: {
-        choices: [ { message: { content: '{}' } } ]
-      }
+    'https://api.openai.com/v1/chat/completions': (url, opts) => {
+      body = JSON.parse(opts.body);
+      return { json: { choices: [ { message: { content: '{}' } } ] } };
     }
   });
 
@@ -33,6 +33,9 @@ test('build route returns 422 on thin payload when push=1', async () => {
 
   assert.equal(res.statusCode, 422);
   assert.equal(res.body.reason, 'thin_payload');
+  const user = JSON.parse(body.messages[1].content);
+  assert.equal(user.context.business_name, 'site.test');
+  assert.equal(user.context.contacts.website, 'http://site.test');
 });
 
 test('build route returns 200 on thin payload when push=0', async () => {

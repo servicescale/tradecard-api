@@ -61,3 +61,24 @@ test('resolveWithLLM targets missing keys', async () => {
   restore();
   assert.deepEqual(user.targets, ['service_2_title']);
 });
+
+test('resolveWithLLM includes context in payload', async () => {
+  resetEnv({ OPENAI_API_KEY: 'k' });
+  let body;
+  const restore = mockFetch({
+    'https://api.openai.com/v1/chat/completions': (url, opts) => {
+      body = JSON.parse(opts.body);
+      return { json: { choices: [{ message: { content: '{}' } }] } };
+    }
+  });
+
+  await resolveWithLLM({
+    raw: {},
+    hints: {},
+    context: { business_name: 'Ctx Biz' },
+    allowKeys: new Set(['identity_business_name'])
+  });
+  const user = JSON.parse(body.messages[1].content);
+  restore();
+  assert.equal(user.context.business_name, 'Ctx Biz');
+});
