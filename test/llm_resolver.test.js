@@ -61,3 +61,37 @@ test('resolveWithLLM targets missing keys', async () => {
   restore();
   assert.deepEqual(user.targets, ['service_2_title']);
 });
+
+test('resolveWithLLM includes extra raw fields in pruned payload', async () => {
+  resetEnv({ OPENAI_API_KEY: 'k' });
+  let body;
+  const raw = {
+    text_blocks: ['a', 'b'],
+    profile_videos: ['v1'],
+    contact_form_links: ['f1'],
+    awards: [{ text: 'Best', href: 'https://a.example' }],
+    social: [{ platform: 'facebook', url: 'https://fb.com/x' }],
+    contacts: { emails: ['e@x.com'], phones: ['123'] }
+  };
+  const restore = mockFetch({
+    'https://api.openai.com/v1/chat/completions': (url, opts) => {
+      body = JSON.parse(opts.body);
+      return { json: { choices: [{ message: { content: '{}' } }] } };
+    }
+  });
+
+  await resolveWithLLM({ raw, allowKeys: new Set(['some']) });
+  restore();
+  const pruned = JSON.parse(body.messages[1].content).raw_pruned;
+  assert.deepEqual(pruned.text_blocks, ['a', 'b']);
+  assert.deepEqual(pruned.profile_videos, ['v1']);
+  assert.deepEqual(pruned.contact_form_links, ['f1']);
+  assert.deepEqual(pruned.awards, [{ text: 'Best', href: 'https://a.example' }]);
+  assert.deepEqual(pruned.social, [
+    { platform: 'facebook', url: 'https://fb.com/x' }
+  ]);
+  assert.deepEqual(pruned.contacts, {
+    emails: ['e@x.com'],
+    phones: ['123']
+  });
+});
