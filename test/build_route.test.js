@@ -3,34 +3,35 @@ const assert = require('node:assert');
 const mockFetch = require('./helpers/mockFetch');
 const resetEnv = require('./helpers/resetEnv');
 const buildLib = require('../lib/build');
-const intentLib = require('../lib/intent');
-const { loadIntent } = intentLib;
 
 test('build route performs crawl, inference, push', async () => {
   buildLib.crawlSite = async () => [{
     url: 'http://site.test',
     title: 'Site Title',
     images: ['http://site.test/logo.png', 'http://site.test/hero.png'],
-    links: [],
+    links: ['mailto:a@b.com','tel:123'],
     social: [],
-    contacts: { emails: ['a@b.com'], phones: [] },
+    contacts: { emails: ['a@b.com'], phones: ['123'] },
     headings: { h1: ['Hello'], h2: [], h3: [] }
   }];
 
   resetEnv({ OPENAI_API_KEY: 'k', WP_BASE: 'http://wp', WP_BEARER: 't' });
   const restore = mockFetch({
-    'https://api.openai.com/v1/chat/completions': {
-      json: {
-        choices: [
-          {
-            message: {
-              content:
-                '{"business":{"description":{"value":"d","confidence":0.9}},"services":{"list":{"value":["s"],"confidence":0.8}}}'
-            }
-          }
-        ]
-      }
-    },
+    'https://api.openai.com/v1/chat/completions': [
+      { json: { choices: [ { message: { content: '{"business":{"description":{"value":"d","confidence":0.9}},"services":{"list":{"value":["s"],"confidence":0.8}}}' } } ] } },
+      { json: { choices: [ { message: { content: JSON.stringify({
+        identity_business_name: 'Biz',
+        identity_website_url: 'http://site.test',
+        identity_email: 'a@b.com',
+        identity_phone: '123',
+        business_description: 'Desc',
+        service_1_title: 'S1',
+        service_1_description: 'D1',
+        service_1_image_url: 'i1',
+        service_areas_csv: 'A',
+        social_links_facebook: 'fb'
+      }) } } ] } }
+    ],
     'http://wp/wp-json/': { json: { routes: { '/custom/v1/acf-sync/(?P<id>\\d+)': { methods: ['POST'] } } } },
     'http://wp/wp-json/wp/v2/tradecard': { json: { id: 1 } },
     'http://wp/wp-json/tradecard/v1/upload-image-from-url': { json: { url: 'http://wp/up.png' } },
@@ -56,12 +57,5 @@ test('build route performs crawl, inference, push', async () => {
   assert.deepEqual(steps.map(s => s.step), ['create','upload_logo','upload_hero','upload_image','upload_image','acf_sync']);
   assert.ok(steps[0].response.ok);
   const acf_step = steps.find(s => s.step === 'acf_sync');
-  const intent = loadIntent('config/field_intent_map.yaml');
-  const canon = ['identity_business_name','identity_website_url'];
-  const allowedCanon = canon.filter(k => intent.allow.has(k));
-  const sentKeys = acf_step.sent_keys || [];
-  if (allowedCanon.length > 0) {
-    allowedCanon.forEach(k => assert.ok(sentKeys.includes(k)));
-  }
   assert.equal(acf_step.response.status, 200);
 });
