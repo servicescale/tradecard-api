@@ -50,7 +50,7 @@ allow:
   - trust_contact_form
   - trust_vcf_url
   - trust_award
-  - trsut_award_link
+  - trust_award_link
   - service_2_title
   - service_2_subtitle
   - service_2_image_url
