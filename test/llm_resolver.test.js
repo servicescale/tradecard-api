@@ -26,7 +26,8 @@ test('resolveWithLLM returns allowed keys only', async () => {
   });
 
   const { fields, audit } = await resolveWithLLM({
-    tradecard: {},
+    raw: {},
+    hints: {},
     allowKeys: ['identity_business_name', 'identity_phone']
   });
   restore();

@@ -26,14 +26,28 @@ module.exports = async function handler(req, res) {
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
     result.raw = {
-      headings: pages.flatMap(p => Object.values(p.headings || {}).flat()).slice(0, 20),
-      paragraphs: pages.flatMap(p => p.paragraphs || []).slice(0, 20),
-      links: pages.flatMap(p => p.links || []).slice(0, 50),
-      images: pages.flatMap(p => p.images || []).slice(0, 30),
-      meta: pages[0]?.meta,
-      schema: pages[0]?.schema,
+      anchors: pages.flatMap((p) => (p.links || []).map((href) => ({ href, text: '' }))),
+      headings: pages.flatMap((p) => Object.values(p.headings || {}).flat()),
+      paragraphs: pages.flatMap((p) => p.paragraphs || []),
+      images: pages.flatMap((p) => (p.images || []).map((src) => ({ src, alt: '' }))),
+      meta: pages[0]?.meta || {},
+      jsonld: pages[0]?.schema,
       url: startUrl
     };
+
+    const tradecard_counts = {
+      emails: result.tradecard.contacts.emails.length,
+      phones: result.tradecard.contacts.phones.length,
+      socials: result.tradecard.social.length,
+      images: result.tradecard.assets.images.length
+    };
+    const raw_counts = {
+      anchors: result.raw.anchors.length,
+      headings: result.raw.headings.length,
+      paragraphs: result.raw.paragraphs.length,
+      images: result.raw.images.length
+    };
+    trace.push({ stage: 'intent_input', tradecard_counts, raw_counts });
 
     trace.push({ stage: 'infer', enabled: infer, key_present: !!process.env.OPENAI_API_KEY });
     if (infer) {
@@ -80,7 +94,7 @@ module.exports = async function handler(req, res) {
       trace.push({ stage: 'infer_merge', applied });
     }
 
-    const intent = await applyIntent(result.tradecard, { raw: result.raw });
+    const intent = await applyIntent(result.tradecard, { raw: result.raw, resolve: req.query.resolve || 'llm' });
     trace.push({ stage: 'intent', audit: intent.audit });
     if (intent.trace) trace.push(...intent.trace);
 
