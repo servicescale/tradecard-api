@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
     const result = buildTradecardFromPages(startUrl, pages);
     const raw = {
       anchors: (pages || [])
-        .flatMap((p) => p.links || [])
+        .flatMap((p) => p.anchors || p.links || [])
         .map((l) =>
           typeof l === 'string'
             ? { href: l, text: '' }
@@ -42,7 +42,8 @@ module.exports = async function handler(req, res) {
             : { src: i.src, alt: i.alt || '' }
         ),
       meta: pages?.[0]?.meta || {},
-      jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || []
+      jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || [],
+      text_blocks: pages?.[0]?.text_blocks || []
     };
 
     trace.push({
@@ -56,7 +57,8 @@ module.exports = async function handler(req, res) {
         headings: raw.headings.length,
         images: raw.images.length,
         meta: Object.keys(raw.meta || {}).length,
-        jsonld: raw.jsonld.length
+        jsonld: raw.jsonld.length,
+        text_blocks: raw.text_blocks.length
       }
     });
 
