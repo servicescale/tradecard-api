@@ -18,8 +18,6 @@ module.exports = async function handler(req, res) {
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const infer = req.query.infer === '1';
   const doPush = req.query?.push === '1';
-  const resolveMode = (req.query.resolve || 'hybrid');
-
   const trace = [];
 
   try {
@@ -28,9 +26,13 @@ module.exports = async function handler(req, res) {
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
     result.raw = {
-      headings: pages.flatMap(p => Object.values(p.headings || {}).flat()),
-      paragraphs: pages.flatMap(p => p.paragraphs || []),
-      images: pages.flatMap(p => p.images || [])
+      headings: pages.flatMap(p => Object.values(p.headings || {}).flat()).slice(0, 20),
+      paragraphs: pages.flatMap(p => p.paragraphs || []).slice(0, 20),
+      links: pages.flatMap(p => p.links || []).slice(0, 50),
+      images: pages.flatMap(p => p.images || []).slice(0, 30),
+      meta: pages[0]?.meta,
+      schema: pages[0]?.schema,
+      url: startUrl
     };
 
     trace.push({ stage: 'infer', enabled: infer, key_present: !!process.env.OPENAI_API_KEY });
@@ -76,6 +78,14 @@ module.exports = async function handler(req, res) {
       }
 
       trace.push({ stage: 'infer_merge', applied });
+    }
+
+    const intent = await applyIntent(result.tradecard, { raw: result.raw });
+    trace.push({ stage: 'intent', audit: intent.audit });
+    if (intent.trace) trace.push(...intent.trace);
+
+    if (intent.sent_keys.length < 10) {
+      return res.status(422).json({ ok: false, reason: 'thin_payload', sent: intent.sent_keys.length, sample: intent.sent_keys.slice(0, 10) });
     }
 
     let wordpress;
@@ -128,35 +138,8 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            trace.push({
-              stage: 'intent_input',
-              tradecard: {
-                name: !!result.tradecard?.business?.name,
-                website: !!result.tradecard?.contacts?.website,
-                emails: (result.tradecard?.contacts?.emails || []).length,
-                phones: (result.tradecard?.contacts?.phones || []).length,
-                socials: (result.tradecard?.social || []).length,
-                services: (result.tradecard?.services?.list || []).length
-              },
-              raw: {
-                keys: Object.keys(result.raw || {}).length,
-                headings: (result.raw?.headings || []).length,
-                paragraphs: (result.raw?.paragraphs || []).length,
-                images: (result.raw?.images || []).length
-              }
-            });
-
-            const intent = await applyIntent(result.tradecard, { raw: result.raw, infer, resolve: resolveMode });
-            trace.push({ stage: 'intent', audit: intent.audit });
-            if (intent.trace) trace.push(...intent.trace);
             const acf = await acfSync(base, token, postId, intent.fields);
-            steps.push({
-              step: 'acf_sync',
-              sent_keys: intent.sent_keys,
-              dropped_unknown: intent.dropped_unknown,
-              dropped_empty: intent.dropped_empty,
-              response: { status: acf.status }
-            });
+            steps.push({ step: 'acf_sync', sent_keys: intent.sent_keys, response: { status: acf.status } });
             trace.push({ stage: 'push', step: 'acf_sync', ok: acf.ok, status: acf.status });
             const details = { steps, acf_keys: intent.sent_keys };
             wordpress = { ok: acf.ok && create.ok, post_id: postId, details };
