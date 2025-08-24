@@ -5,6 +5,7 @@ const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
+const { getAllowKeys } = require("../lib/acf_contract");
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -14,9 +15,9 @@ module.exports = async function handler(req, res) {
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const resolveMode = req.query.resolve || 'llm';
-  const doPush = req.query?.push === '1';
   const trace = [];
   const debug = { trace };
+  const allow = getAllowKeys();
 
   try {
     const t0 = Date.now();
@@ -87,19 +88,17 @@ module.exports = async function handler(req, res) {
     const intent = await applyIntent(result.tradecard, { raw, resolve: resolveMode });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
-    const min = Number(process.env.MIN_ACF_KEYS) || 10;
+    const fmap = require('../lib/rule_exec').loadIntentMap();
+    const required = (fmap.policy?.required||[]).filter(k => allow.has(k));
+    const presentSet = new Set(intent.sent_keys||[]);
+    const missingRequired = required.filter(k => !presentSet.has(k));
+    const isPush = req.query.push==='1'||req.query.push===1||req.query.push===true||req.query.push==='true';
+    if (isPush && missingRequired.length) {
+      debug.trace.push({stage:"policy_check", missingRequired, required});
+      return res.status(422).json({ ok:false, reason:"policy_failed", missingRequired, debug });
+    }
     let wordpress;
-    if (doPush) {
-      if ((intent.sent_keys || []).length < min) {
-        return res.status(422).json({
-          ok: false,
-          reason: 'thin_payload',
-          sent: (intent.sent_keys || []).length,
-          sample: (intent.sent_keys || []).slice(0, 10),
-          debug
-        });
-      }
-
+    if (isPush) {
       if (!process.env.WP_BASE || !process.env.WP_BEARER) {
         wordpress = { skipped: true, reason: 'Missing WP_BASE or WP_BEARER' };
       } else {
