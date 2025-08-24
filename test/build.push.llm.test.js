@@ -6,7 +6,36 @@ const resetEnv = require('./helpers/resetEnv');
 const buildLib = require('../lib/build');
 const handler = require('../api/build');
 
-test('build route returns 422 on thin payload', async () => {
+test('build route returns 422 on thin payload when push=1', async () => {
+  buildLib.crawlSite = async () => [{
+    url: 'http://site.test',
+    title: 'Site Title',
+    images: [],
+    links: [],
+    social: [],
+    contacts: { emails: [], phones: [] },
+    headings: { h1: [], h2: [], h3: [] }
+  }];
+
+  resetEnv({ OPENAI_API_KEY: 'k' });
+  const restore = mockFetch({
+    'https://api.openai.com/v1/chat/completions': {
+      json: {
+        choices: [ { message: { content: '{}' } } ]
+      }
+    }
+  });
+
+  const req = { query: { url: 'http://site.test', push: '1' } };
+  const res = { status(c) { this.statusCode = c; return this; }, json(o) { this.body = o; } };
+  await handler(req, res);
+  restore();
+
+  assert.equal(res.statusCode, 422);
+  assert.equal(res.body.reason, 'thin_payload');
+});
+
+test('build route returns 200 on thin payload when push=0', async () => {
   buildLib.crawlSite = async () => [{
     url: 'http://site.test',
     title: 'Site Title',
@@ -31,6 +60,5 @@ test('build route returns 422 on thin payload', async () => {
   await handler(req, res);
   restore();
 
-  assert.equal(res.statusCode, 422);
-  assert.equal(res.body.reason, 'thin_payload');
+  assert.equal(res.statusCode, 200);
 });

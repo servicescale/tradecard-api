@@ -57,7 +57,7 @@ test('build route performs crawl, intent resolve, push', async () => {
   assert.ok(res.body.wordpress.ok);
   assert.ok(res.body.debug.trace.find(t => t.stage === 'crawl'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'intent_input'));
-  assert.ok(res.body.debug.trace.find(t => t.stage === 'hint_extract'));
+  assert.ok(res.body.debug.trace.find(t => t.stage === 'det_resolve'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'llm_resolve'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'intent_coverage'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'push' && t.step === 'acf_sync'));

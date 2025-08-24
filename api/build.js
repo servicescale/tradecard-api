@@ -13,7 +13,6 @@ module.exports = async function handler(req, res) {
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const resolveMode = req.query.resolve || 'llm';
-  const min = Number(process.env.MIN_ACF_KEYS) || 10;
   const doPush = req.query?.push === '1';
   const trace = [];
   const debug = { trace };
@@ -24,15 +23,26 @@ module.exports = async function handler(req, res) {
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
     const raw = {
-      anchors: pages.flatMap((p) => p.links || []).map((l) => ({ href: l.href, text: l.text || '' })),
-      headings: pages
+      anchors: (pages || [])
+        .flatMap((p) => p.links || [])
+        .map((l) =>
+          typeof l === 'string'
+            ? { href: l, text: '' }
+            : { href: l.href, text: l.text || '' }
+        ),
+      headings: (pages || [])
         .flatMap((p) => Object.values(p.headings || {}))
         .flat()
-        .map((h) => ({ text: h })),
-      paragraphs: pages.flatMap((p) => p.paragraphs || []),
-      images: pages.flatMap((p) => (p.images || []).map((i) => ({ src: i.src, alt: i.alt || '' }))),
-      meta: pages[0]?.meta || {},
-      jsonld: pages[0]?.jsonld || pages[0]?.schema || []
+        .map((t) => ({ text: t })),
+      images: (pages || [])
+        .flatMap((p) => p.images || [])
+        .map((i) =>
+          typeof i === 'string'
+            ? { src: i, alt: '' }
+            : { src: i.src, alt: i.alt || '' }
+        ),
+      meta: pages?.[0]?.meta || {},
+      jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || []
     };
 
     trace.push({
@@ -42,30 +52,30 @@ module.exports = async function handler(req, res) {
         website: !!result.tradecard?.contacts?.website
       },
       raw_counts: {
-        anchors: (raw.anchors || []).length,
-        headings: (raw.headings || []).length,
-        paragraphs: (raw.paragraphs || []).length,
-        images: (raw.images || []).length,
+        anchors: raw.anchors.length,
+        headings: raw.headings.length,
+        images: raw.images.length,
         meta: Object.keys(raw.meta || {}).length,
-        jsonld: (raw.jsonld || []).length
+        jsonld: raw.jsonld.length
       }
     });
 
     const intent = await applyIntent(result.tradecard, { raw, resolve: resolveMode });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
-    if (intent.sent_keys.length < min) {
-      return res.status(422).json({
-        ok: false,
-        reason: 'thin_payload',
-        sent: intent.sent_keys.length,
-        sample: intent.sent_keys.slice(0, 10),
-        debug
-      });
-    }
-
+    const min = Number(process.env.MIN_ACF_KEYS) || 10;
     let wordpress;
     if (doPush) {
+      if ((intent.sent_keys || []).length < min) {
+        return res.status(422).json({
+          ok: false,
+          reason: 'thin_payload',
+          sent: (intent.sent_keys || []).length,
+          sample: (intent.sent_keys || []).slice(0, 10),
+          debug
+        });
+      }
+
       if (!process.env.WP_BASE || !process.env.WP_BEARER) {
         wordpress = { skipped: true, reason: 'Missing WP_BASE or WP_BEARER' };
       } else {
