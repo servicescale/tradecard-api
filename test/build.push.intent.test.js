@@ -49,3 +49,30 @@ test('applyIntent uses LLM and returns fields', async () => {
   assert.ok(intent.sent_keys.includes('business_description'));
   assert.equal(intent.sent_keys.length, Object.keys(intent.fields).length);
 });
+
+test('applyIntent invokes LLM when MVF fills many fields', async () => {
+  resetEnv({ OPENAI_API_KEY: 'k' });
+  const restore = mockFetch({
+    'https://api.openai.com/v1/chat/completions': { json: { choices: [{ message: { content: '{}' } }] } }
+  });
+  const raw = {
+    anchors: [
+      { href: 'mailto:a@b.com' },
+      { href: 'tel:123' },
+      { href: 'https://facebook.com/x' },
+      { href: 'https://instagram.com/x' },
+      { href: 'https://linkedin.com/x' },
+      { href: 'https://x.com/x' },
+      { href: 'https://youtube.com/x' },
+      { href: 'https://tiktok.com/x' },
+      { href: 'https://pinterest.com/x' }
+    ],
+    jsonld: [
+      { '@type': 'Organization', name: 'Org', url: 'http://example.com' }
+    ]
+  };
+  await applyIntent({}, { raw });
+  const calls = restore.calls.length;
+  restore();
+  assert.equal(calls, 1);
+});
