@@ -24,6 +24,23 @@ test('build route performs crawl, intent resolve, push', async () => {
             {
               message: {
                 content: JSON.stringify({
+                  business: { description: 'Inferred Desc' },
+                  services: { list: ['Inferred Service'] },
+                  service_areas: ['Area1'],
+                  brand: { tone: 'Friendly' },
+                  testimonials: [{ quote: 'Great', reviewer: 'Ann' }]
+                })
+              }
+            }
+          ]
+        }
+      },
+      {
+        json: {
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
                   identity_business_name: 'Biz',
                   identity_website_url: 'http://site.test',
                   identity_email: 'a@b.com',
@@ -56,6 +73,7 @@ test('build route performs crawl, intent resolve, push', async () => {
   assert.equal(res.statusCode, 200);
   assert.ok(res.body.wordpress.ok);
   assert.ok(res.body.debug.trace.find(t => t.stage === 'crawl'));
+  assert.ok(res.body.debug.trace.find(t => t.stage === 'infer'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'intent_input'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'det_resolve'));
   assert.ok(res.body.debug.trace.find(t => t.stage === 'llm_resolve'));
@@ -68,4 +86,6 @@ test('build route performs crawl, intent resolve, push', async () => {
   assert.equal(acf_step.response.status, 200);
   assert.ok(Array.isArray(res.body.wordpress.details.acf_keys));
   assert.ok(res.body.wordpress.details.acf_keys.length >= 1);
+  assert.equal(res.body.tradecard.business.description.value, 'Inferred Desc');
+  assert.deepEqual(res.body.tradecard.services.list.value, ['Inferred Service']);
 });

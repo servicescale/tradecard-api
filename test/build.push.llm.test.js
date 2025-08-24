@@ -26,7 +26,7 @@ test('build route returns 422 on thin payload when push=1', async () => {
     }
   });
 
-  const req = { query: { url: 'http://site.test', push: '1' } };
+  const req = { query: { url: 'http://site.test', push: '1', resolve: 'none' } };
   const res = { status(c) { this.statusCode = c; return this; }, json(o) { this.body = o; } };
   await handler(req, res);
   restore();
@@ -58,7 +58,7 @@ test('build route returns 200 on thin payload when push=0', async () => {
     }
   });
 
-  const req = { query: { url: 'http://site.test', push: '0' } };
+  const req = { query: { url: 'http://site.test', push: '0', resolve: 'none' } };
   const res = { status(c) { this.statusCode = c; return this; }, json(o) { this.body = o; } };
   await handler(req, res);
   restore();
