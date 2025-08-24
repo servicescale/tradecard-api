@@ -145,21 +145,21 @@ identity_website_url:
   fallback: false
 
 # ===== Service Panels =====
-<full 02_service_panels.yaml from patch>
+# <full 02_service_panels.yaml from patch>
 # Common constraints for inclusions
-_inclusion_constraints:
+_inclusion_constraints: &_inclusion_constraints
   reject_values:
     - "TBC"
     - "Coming Soon"
 
 # Common constraints for tags
-_tag_constraints:
+_tag_constraints: &_tag_constraints
   must_start_with: "featured_"
   no_underscores: true
   format: human_readable_single
 
 # Common constraints for price note
-_price_note_constraints:
+_price_note_constraints: &_price_note_constraints
   max_length: 30
   allowed_phrases:
     - "plus GST"
@@ -168,7 +168,7 @@ _price_note_constraints:
     - "per month"
 
 # Common constraints for price
-_price_constraints:
+_price_constraints: &_price_constraints
   max_length: 6
 
 # ===== Service 1 =====
@@ -440,8 +440,22 @@ service_3_panel_tag:
   fallback: false
   constraints:
     allowed_values: ["featured service", "featured project", "featured product"]
+
+account_company:
+  priority: optional
+  tools: []
+  fallback: false
+  constraints:
+    min_length: 2
+
+account_subscription:
+  priority: optional
+  tools: []
+  fallback: false
+  constraints:
+    min_length: 2
 # ===== Trust & Visual =====
-<full 03_trust_visual.yaml from patch>
+# <full 03_trust_visual.yaml from patch>
 trust_qr_text:
   priority: required
   tools: []
@@ -492,6 +506,20 @@ trust_profile_video_url:
       - "youtu.be"
       - "vimeo.com"
 
+trust_award:
+  priority: optional
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    min_length: 2
+
+trust_award_link:
+  priority: recommended_if_trust_award
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    format: url
+
 theme_accent_color:
   priority: required
   tools: []
@@ -521,7 +549,7 @@ trust_vcf_url:
   tools: []
   fallback: false
 # ===== Social Links =====
-<full 04_social_links.yaml from patch>
+# <full 04_social_links.yaml from patch>
 social_links_facebook:
   priority: recommended
   tools: [site_scraper]
@@ -613,8 +641,23 @@ social_links_youtube:
     strip_query_params: ["utm_", "fbclid"]
     lowercase_except_protocol: true
     must_contain: "youtube.com"
+
+business_description:
+  priority: recommended
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    min_words: 20
+    max_length: 240
+
+service_areas_csv:
+  priority: optional
+  tools: [site_scraper]
+  fallback: false
+  constraints:
+    format: csv
 # ===== Testimonials =====
-<full 05_testimonials.yaml from patch>
+# <full 05_testimonials.yaml from patch>
 testimonial_location:
   priority: required_if_testimonial
   tools: [site_scraper, gmb_lookup]
