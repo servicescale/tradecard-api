@@ -89,11 +89,10 @@ test('resolveWithLLM includes extra raw fields in pruned payload', async () => {
     allowKeys: new Set(['identity_business_name'])
   });
   const user = JSON.parse(body.messages[1].content);
-  restore();
   assert.equal(user.context.business_name, 'Ctx Biz');
   await resolveWithLLM({ raw, allowKeys: new Set(['some']) });
-  restore();
   const pruned = JSON.parse(body.messages[1].content).raw_pruned;
+  restore();
   assert.deepEqual(pruned.text_blocks, ['a', 'b']);
   assert.deepEqual(pruned.profile_videos, ['v1']);
   assert.deepEqual(pruned.contact_form_links, ['f1']);
