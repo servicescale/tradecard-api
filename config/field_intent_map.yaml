@@ -99,6 +99,9 @@ identity_services:
   priority: optional
   tools: [site_scraper]
   fallback: false
+  constraints:
+    html_tag: div
+    class: tag
 
 identity_display_name:
   priority: derived
@@ -150,14 +153,14 @@ identity_website_url:
 # <full 02_service_panels.yaml from patch>
 # Common constraints for inclusions
 _inclusion_constraints: &_inclusion_constraints
+  min_length: 2
   reject_values:
     - "TBC"
     - "Coming Soon"
 
 # Common constraints for tags
 _tag_constraints: &_tag_constraints
-  must_start_with: "featured_"
-  no_underscores: true
+  allowed_values: ["featured service", "featured project", "featured product"]
   format: human_readable_single
 
 # Common constraints for price note
@@ -172,6 +175,7 @@ _price_note_constraints: &_price_note_constraints
 # Common constraints for price
 _price_constraints: &_price_constraints
   max_length: 6
+  regex: "^\\$?\\d+(?:\\.\\d{2})?$"
 
 # ===== Service 1 =====
 service_1_title:
@@ -644,7 +648,7 @@ social_links_youtube:
     reject_placeholders: ["#", "/", ""]
     strip_query_params: ["utm_", "fbclid"]
     lowercase_except_protocol: true
-    must_contain: "youtube.com"
+    must_contain_any: ["youtube.com", "youtu.be"]
 
 business_description:
   priority: recommended
