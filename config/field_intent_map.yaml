@@ -499,6 +499,9 @@ trust_review_button_link:
   priority: derived
   tools: []
   fallback: false
+  constraints:
+    format: url
+    derived_from: trust_google_review_url
 
 trust_profile_video_url:
   priority: optional
@@ -555,6 +558,9 @@ trust_vcf_url:
   priority: derived
   tools: []
   fallback: false
+  constraints:
+    format: url
+    derived_from: tradecard_url
 # ===== Social Links =====
 # TODO: Add social links mapping
 # <full 04_social_links.yaml from patch>
