@@ -92,7 +92,9 @@ module.exports = async function handler(req, res) {
     const required = Object.keys(map).filter((k) => map[k]?.priority === 'required' && allow.has(k));
     const coverage = computeCoverage(clean, allow);
     const requiredMissing = required.filter((k) => !clean[k]);
-    const resolveDecision = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: 0.35 });
+    const covEnv = Number(process.env.COVERAGE_THRESHOLD);
+    const covThreshold = !Number.isNaN(covEnv) && covEnv < 0.5 ? covEnv : 0.5;
+    const resolveDecision = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: covThreshold });
     trace.push({ stage: 'gate', type: 'resolve', ...resolveDecision, coverage });
 
     if (isPush && (intent.sent_keys||[]).length < min) {
