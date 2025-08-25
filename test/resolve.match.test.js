@@ -7,6 +7,10 @@ test('similar matches short strings', () => {
   assert.ok(similar('id', 'name') < 1);
 });
 
+test('similar handles small typos', () => {
+  assert.ok(similar('onwer', 'owner') > 0.5);
+});
+
 test('pickBest returns high confidence for exact match', () => {
   const candidates = { id: { value: '123' }, name: { value: 'Alice' } };
   const out = pickBest(candidates, 'id');
