@@ -18,6 +18,7 @@ module.exports = async function handler(req, res) {
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const fullFrame = ['1', 'true', 1, true].includes(req.query.full_frame);
+  const noLLM = ['1', 'true', 1, true].includes(req.query.no_llm);
   const trace = [];
   const debug = { trace };
   const aliases = getAliases();
@@ -28,7 +29,7 @@ module.exports = async function handler(req, res) {
     trace.push({ stage: 'crawl', ms: Date.now() - t0 });
     const result = buildTradecardFromPages(startUrl, pages);
 
-    const inferred = await inferTradecard(result.tradecard);
+    const inferred = noLLM ? { _meta: { skipped: 'no_llm' } } : await inferTradecard(result.tradecard);
     trace.push({ stage: 'infer', ...inferred._meta });
     if (inferred._meta?.ok) {
       if (inferred.business?.description) {
@@ -78,7 +79,7 @@ module.exports = async function handler(req, res) {
       }
     });
 
-    const intent = await applyIntent(result.tradecard, { raw, fullFrame });
+    const intent = await applyIntent(result.tradecard, { raw, fullFrame, opts: { noLLM } });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
     const map = loadMap();
