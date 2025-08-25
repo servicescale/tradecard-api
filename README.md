@@ -14,3 +14,7 @@ empty after deterministic, LLM, and derived resolutions:
 ```
 
 This makes it easier for API clients to debug missing data.
+
+## Environment Variables
+
+- `COVERAGE_THRESHOLD` – Minimum required field coverage (0–1); defaults to 0.5.
