@@ -42,10 +42,14 @@ test('build route performs crawl, intent resolve, push', async () => {
               message: {
                 content: JSON.stringify({
                   identity_business_name: 'Biz',
-                  identity_website_url: 'http://site.test',
+                  identity_owner_name: 'Ann',
+                  identity_role_title: 'Owner',
+                  identity_state: 'NSW',
+                  identity_business_type: 'Plumber',
                   identity_email: 'a@b.com',
                   identity_phone: '123',
-                  identity_services: 'service1',
+                  identity_website: 'http://site.test',
+                  identity_location_label: 'Sydney',
                   business_description: 'Desc',
                   service_2_title: 'S1',
                   service_2_description: 'D1',
