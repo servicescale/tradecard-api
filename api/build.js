@@ -8,7 +8,7 @@ const { inferTradecard } = require('../lib/infer');
 const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract.ts");
 const { loadMap, enforcePolicy } = require("../lib/policy.ts");
 const { computeCoverage } = require('../lib/coverage.ts');
-const { resolveGate, publishGate, REQUIRED_ACF_KEYS } = require('../lib/gates.ts');
+const { resolveGate, publishGate } = require('../lib/gates.ts');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -87,16 +87,23 @@ module.exports = async function handler(req, res) {
     debug.trace.push({ step: 'policy_enforce', rejected });
 
     const allow = new Set(getAllowKeys());
+    const required = Object.keys(map).filter((k) => map[k]?.priority === 'required' && allow.has(k));
     const coverage = computeCoverage(clean, allow);
-    const requiredMissing = REQUIRED_ACF_KEYS.filter(k => !clean[k]);
-    const gate1 = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: 0.35 });
-    trace.push({ stage: 'gate', type: 'resolve', ...gate1, coverage });
-    if (!gate1.pass) {
-      return res.status(200).json({ ok: false, reason: gate1.reason, debug });
-    }
+    const requiredMissing = required.filter((k) => !clean[k]);
+    const resolveDecision = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: 0.35 });
+    trace.push({ stage: 'gate', type: 'resolve', ...resolveDecision, coverage });
+
     const isPush = req.query.push === '1' || req.query.push === 1 || req.query.push === true || req.query.push === 'true';
+    if (!isPush && !resolveDecision.pass) {
+      return res.status(200).json({ ok: false, reason: resolveDecision.reason, debug });
+    }
     let wordpress;
     if (isPush) {
+      const publishDecision = publishGate({ resolvePass: resolveDecision.pass, requiredMissing });
+      trace.push({ stage: 'gate', type: 'publish', ...publishDecision, missing: requiredMissing });
+      if (!publishDecision.pass) {
+        return res.status(422).json({ ok: false, reason: publishDecision.reason, missingRequired: requiredMissing, debug });
+      }
       if (!process.env.WP_BASE || !process.env.WP_BEARER) {
         wordpress = { skipped: true, reason: 'Missing WP_BASE or WP_BEARER' };
       } else {
@@ -150,12 +157,8 @@ module.exports = async function handler(req, res) {
               const key = aliases[k] || k;
               if (hasACFKey(key)) payload[key] = v === null ? '' : v;
             }
-            const publishDecision = publishGate({ resolvePass: true, requiredMissing });
-            trace.push({ stage: 'gate', type: 'publish', ...publishDecision, missing: requiredMissing });
-            if (!publishDecision.pass) {
-              return res.status(422).json({ ok: false, reason: publishDecision.reason, missingRequired: requiredMissing, debug });
-            }
             const sent_keys = Object.keys(payload);
+            debug.trace.push({ step: 'acf_sync', sent_keys });
             const acf = await acfSync(base, token, postId, payload);
             steps.push({ step: 'acf_sync', sent_keys, response: { status: acf.status } });
             trace.push({ stage: 'push', step: 'acf_sync', sent_keys, ok: acf.ok, status: acf.status });
