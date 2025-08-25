@@ -1,0 +1,34 @@
+{
+  "identity_owner_name": "Jane Smith",
+  "meta": {
+    "canonical": "http://biz.example.com/",
+    "og:image": "http://biz.example.com/logo.png"
+  },
+  "anchors": [
+    { "href": "mailto:info@biz.example.com" },
+    { "href": "tel:0212345678" },
+    { "href": "https://facebook.com/biz" }
+  ],
+  "headings": ["Our Services"],
+  "images": [
+    { "src": "http://biz.example.com/service1.jpg", "alt": "Service 1" }
+  ],
+  "service_panels": [
+    {
+      "title": "Panel 1",
+      "cta_link": "http://biz.example.com/buy1"
+    }
+  ],
+  "projects": [
+    {
+      "title": "Project A",
+      "image_url": "http://biz.example.com/projA.jpg",
+      "cta_link": "http://biz.example.com/projA"
+    },
+    {
+      "title": "Project B",
+      "image_url": "http://biz.example.com/projB.jpg",
+      "cta_link": "http://biz.example.com/projB"
+    }
+  ]
+}
