@@ -14,7 +14,6 @@ module.exports = async function handler(req, res) {
   const maxPages = Math.min(parseInt(req.query?.maxPages || '12', 10) || 12, 50);
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
-  const resolveMode = req.query.resolve || 'llm';
   const trace = [];
   const debug = { trace };
   const allow = getAllowKeys();
@@ -47,26 +46,17 @@ module.exports = async function handler(req, res) {
 
     const raw = {
       anchors: (pages || [])
-        .flatMap((p) => p.anchors || p.links || [])
-        .map((l) =>
-          typeof l === 'string'
-            ? { href: l, text: '' }
-            : { href: l.href, text: l.text || '' }
-        ),
+        .flatMap((p) => p.links || [])
+        .map((l) => ({ href: l.href || '', text: l.text || '' })),
       headings: (pages || [])
         .flatMap((p) => Object.values(p.headings || {}))
         .flat()
         .map((t) => ({ text: t })),
       images: (pages || [])
         .flatMap((p) => p.images || [])
-        .map((i) =>
-          typeof i === 'string'
-            ? { src: i, alt: '' }
-            : { src: i.src, alt: i.alt || '' }
-        ),
+        .map((i) => ({ src: i.src || '', alt: i.alt || '' })),
       meta: pages?.[0]?.meta || {},
-      jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || [],
-      text_blocks: pages?.[0]?.text_blocks || []
+      jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || []
     };
 
     trace.push({
@@ -80,18 +70,16 @@ module.exports = async function handler(req, res) {
         headings: raw.headings.length,
         images: raw.images.length,
         meta: Object.keys(raw.meta || {}).length,
-        jsonld: raw.jsonld.length,
-        text_blocks: raw.text_blocks.length
+        jsonld: raw.jsonld.length
       }
     });
 
-    const intent = await applyIntent(result.tradecard, { raw, resolve: resolveMode });
+    const intent = await applyIntent(result.tradecard, { raw });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
-    const fmap = require('../lib/rule_exec').loadIntentMap();
-    const required = Object.entries(fmap)
-      .filter(([k, v]) => v.priority === 'required' && k.startsWith('identity_') && allow.has(k))
-      .map(([k]) => k);
+    const fmap = require('../lib/intent_map').loadIntentMap();
+    const reqSet = require('../lib/intent_map').requiredFromMap(fmap);
+    const required = Array.from(reqSet).filter((k) => allow.has(k));
     const presentSet = new Set(intent.sent_keys || []);
     const missingRequired = required.filter(k => !presentSet.has(k));
     const isPush = req.query.push === '1' || req.query.push === 1 || req.query.push === true || req.query.push === 'true';
