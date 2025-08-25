@@ -5,7 +5,7 @@ const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
-const { getAllowKeys } = require("../lib/acf_contract");
+const { getAllowKeys, aliases } = require("../lib/acf_contract");
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -80,8 +80,8 @@ module.exports = async function handler(req, res) {
     const fmap = require('../lib/intent_map').loadIntentMap();
     const reqSet = require('../lib/intent_map').requiredFromMap(fmap);
     const required = Array.from(reqSet).filter((k) => allow.has(k));
-    const presentSet = new Set(intent.sent_keys || []);
-    const missingRequired = required.filter(k => !presentSet.has(k));
+    const presentSet = new Set((intent.sent_keys || []).map(k => aliases[k] || k).filter(k => allow.has(k)));
+    const missingRequired = required.filter((k) => !presentSet.has(k));
     const isPush = req.query.push === '1' || req.query.push === 1 || req.query.push === true || req.query.push === 'true';
     if (isPush && missingRequired.length) {
       debug.trace.push({ stage: 'required_check', missingRequired, required });
@@ -137,10 +137,21 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const acf = await acfSync(base, token, postId, intent.fields);
-            steps.push({ step: 'acf_sync', sent_keys: intent.sent_keys, response: { status: acf.status } });
-            trace.push({ stage: 'push', step: 'acf_sync', ok: acf.ok, status: acf.status });
-            const details = { steps, acf_keys: intent.sent_keys };
+            const remapped = {};
+            for (const [k, v] of Object.entries(intent.fields || {})) {
+              remapped[aliases[k] || k] = v;
+            }
+            const payload = {}, sentKeys = [];
+            for (const [k, v] of Object.entries(remapped)) {
+              if (allow.has(k)) {
+                payload[k] = v === null ? '' : v;
+                sentKeys.push(k);
+              }
+            }
+            const acf = await acfSync(base, token, postId, payload);
+            steps.push({ step: 'acf_sync', sent_keys: sentKeys, response: { status: acf.status } });
+            trace.push({ stage: 'push', step: 'acf_sync', sent_keys: sentKeys, ok: acf.ok, status: acf.status });
+            const details = { steps, acf_keys: sentKeys };
             wordpress = { ok: acf.ok && create.ok, post_id: postId, details };
           } else {
             wordpress = { ok: false, post_id: postId, details: { steps } };
