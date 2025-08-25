@@ -17,6 +17,7 @@ module.exports = async function handler(req, res) {
   const maxPages = Math.min(parseInt(req.query?.maxPages || '12', 10) || 12, 50);
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
+  const fullFrame = ['1', 'true', 1, true].includes(req.query.full_frame);
   const trace = [];
   const debug = { trace };
   const aliases = getAliases();
@@ -77,7 +78,7 @@ module.exports = async function handler(req, res) {
       }
     });
 
-    const intent = await applyIntent(result.tradecard, { raw });
+    const intent = await applyIntent(result.tradecard, { raw, fullFrame });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
     const map = loadMap();
