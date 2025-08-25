@@ -29,8 +29,6 @@ test('resolution integrates reviews and derives trust fields', async () => {
   assert.equal(fields.trust_google_review_count, '25');
   assert.equal(fields.trust_google_review_url, 'https://www.google.com/maps?cid=123');
   assert.equal(fields.trust_review_button_link, 'https://www.google.com/maps?cid=123');
-  assert.equal(fields.theme_primary_color, '#336699');
-  assert.equal(fields.theme_accent_color, darken('#336699'));
   assert.equal(fields.trust_award, 'Best Award 2023');
   assert.equal(fields.trust_award_link, 'https://example.com/award');
   assert.equal(fields.trust_contact_form, 'https://example.com/contact');

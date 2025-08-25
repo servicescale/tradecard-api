@@ -45,6 +45,7 @@ test('build route performs crawl, intent resolve, push', async () => {
                   identity_website_url: 'http://site.test',
                   identity_email: 'a@b.com',
                   identity_phone: '123',
+                  identity_services: 'service1',
                   business_description: 'Desc',
                   service_2_title: 'S1',
                   service_2_description: 'D1',
