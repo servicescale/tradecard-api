@@ -718,3 +718,12 @@ testimonial_job_type:
   priority: optional
   tools: [site_scraper]
   fallback: featured_service
+policy:
+  overall_min: 10
+  required:
+    - identity_business_name
+    - identity_website_url
+    - identity_services
+  category_min:
+    services: 1
+    socials: 1
