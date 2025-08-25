@@ -4,7 +4,7 @@ stage: publish
 
 inputs:
   structured_profile: "mk4/capsules/profile_generator/data/profiles/{slug}_structured.yaml"
-  acf_contract: "config/acf_contract.yaml"
+  acf_contract: "config/acf_field.yaml"
   backlog_file: "mk4/capsules/profile_generator/config/profiles_backlog.yaml"
 
 steps:
