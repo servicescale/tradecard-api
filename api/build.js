@@ -5,7 +5,7 @@ const { crawlSite, buildTradecardFromPages } = require('../lib/build');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
-const { getAllowKeys, aliases } = require("../lib/acf_contract");
+const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract.ts");
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -16,7 +16,8 @@ module.exports = async function handler(req, res) {
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const trace = [];
   const debug = { trace };
-  const allow = getAllowKeys();
+  const allow = new Set(getAllowKeys());
+  const aliases = getAliases();
 
   try {
     const t0 = Date.now();
@@ -137,21 +138,16 @@ module.exports = async function handler(req, res) {
           }
 
           if (postId) {
-            const remapped = {};
+            const payload = {};
             for (const [k, v] of Object.entries(intent.fields || {})) {
-              remapped[aliases[k] || k] = v;
+              const key = aliases[k] || k;
+              if (hasACFKey(key)) payload[key] = v === null ? '' : v;
             }
-            const payload = {}, sentKeys = [];
-            for (const [k, v] of Object.entries(remapped)) {
-              if (allow.has(k)) {
-                payload[k] = v === null ? '' : v;
-                sentKeys.push(k);
-              }
-            }
+            const sent_keys = Object.keys(payload);
             const acf = await acfSync(base, token, postId, payload);
-            steps.push({ step: 'acf_sync', sent_keys: sentKeys, response: { status: acf.status } });
-            trace.push({ stage: 'push', step: 'acf_sync', sent_keys: sentKeys, ok: acf.ok, status: acf.status });
-            const details = { steps, acf_keys: sentKeys };
+            steps.push({ step: 'acf_sync', sent_keys, response: { status: acf.status } });
+            trace.push({ stage: 'push', step: 'acf_sync', sent_keys, ok: acf.ok, status: acf.status });
+            const details = { steps, acf_keys: sent_keys };
             wordpress = { ok: acf.ok && create.ok, post_id: postId, details };
           } else {
             wordpress = { ok: false, post_id: postId, details: { steps } };
