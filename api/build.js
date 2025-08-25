@@ -7,6 +7,8 @@ const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
 const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract.ts");
 const { loadMap, enforcePolicy } = require("../lib/policy.ts");
+const { computeCoverage } = require('../lib/coverage.ts');
+const { resolveGate, publishGate, REQUIRED_ACF_KEYS } = require('../lib/gates.ts');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -17,7 +19,6 @@ module.exports = async function handler(req, res) {
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const trace = [];
   const debug = { trace };
-  const allow = new Set(getAllowKeys());
   const aliases = getAliases();
 
   try {
@@ -85,16 +86,15 @@ module.exports = async function handler(req, res) {
     intent.sent_keys = Object.keys(clean).filter(k => clean[k] !== null);
     debug.trace.push({ step: 'policy_enforce', rejected });
 
-    const fmap = require('../lib/intent_map').loadIntentMap();
-    const reqSet = require('../lib/intent_map').requiredFromMap(fmap);
-    const required = Array.from(reqSet).filter((k) => allow.has(k));
-    const presentSet = new Set((intent.sent_keys || []).map(k => aliases[k] || k).filter(k => allow.has(k)));
-    const missingRequired = required.filter((k) => !presentSet.has(k));
-    const isPush = req.query.push === '1' || req.query.push === 1 || req.query.push === true || req.query.push === 'true';
-    if (isPush && missingRequired.length) {
-      debug.trace.push({ stage: 'required_check', missingRequired, required });
-      return res.status(422).json({ ok: false, reason: 'missing_required', missingRequired, debug });
+    const allow = new Set(getAllowKeys());
+    const coverage = computeCoverage(clean, allow);
+    const requiredMissing = REQUIRED_ACF_KEYS.filter(k => !clean[k]);
+    const gate1 = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: 0.35 });
+    trace.push({ stage: 'gate', type: 'resolve', ...gate1, coverage });
+    if (!gate1.pass) {
+      return res.status(200).json({ ok: false, reason: gate1.reason, debug });
     }
+    const isPush = req.query.push === '1' || req.query.push === 1 || req.query.push === true || req.query.push === 'true';
     let wordpress;
     if (isPush) {
       if (!process.env.WP_BASE || !process.env.WP_BEARER) {
@@ -149,6 +149,11 @@ module.exports = async function handler(req, res) {
             for (const [k, v] of Object.entries(intent.fields || {})) {
               const key = aliases[k] || k;
               if (hasACFKey(key)) payload[key] = v === null ? '' : v;
+            }
+            const publishDecision = publishGate({ resolvePass: true, requiredMissing });
+            trace.push({ stage: 'gate', type: 'publish', ...publishDecision, missing: requiredMissing });
+            if (!publishDecision.pass) {
+              return res.status(422).json({ ok: false, reason: publishDecision.reason, missingRequired: requiredMissing, debug });
             }
             const sent_keys = Object.keys(payload);
             const acf = await acfSync(base, token, postId, payload);
