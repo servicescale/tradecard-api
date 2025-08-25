@@ -85,6 +85,8 @@ module.exports = async function handler(req, res) {
     intent.fields = clean;
     intent.sent_keys = Object.keys(clean).filter(k => clean[k] !== null);
     debug.trace.push({ step: 'policy_enforce', rejected });
+    const isPush = (req.query.push==='1' || req.query.push===1 || req.query.push===true || req.query.push==='true');
+    const min = Number(process.env.MIN_ACF_KEYS)||10;
 
     const allow = new Set(getAllowKeys());
     const required = Object.keys(map).filter((k) => map[k]?.priority === 'required' && allow.has(k));
@@ -93,7 +95,15 @@ module.exports = async function handler(req, res) {
     const resolveDecision = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: 0.35 });
     trace.push({ stage: 'gate', type: 'resolve', ...resolveDecision, coverage });
 
-    const isPush = req.query.push === '1' || req.query.push === 1 || req.query.push === true || req.query.push === 'true';
+    if (isPush && (intent.sent_keys||[]).length < min) {
+      return res.status(422).json({
+        ok: false,
+        reason: 'thin_payload',
+        sent: (intent.sent_keys||[]).length,
+        sample: (intent.sent_keys||[]).slice(0,10),
+        debug
+      });
+    }
     if (!isPush && !resolveDecision.pass) {
       return res.status(200).json({ ok: false, reason: resolveDecision.reason, debug });
     }
