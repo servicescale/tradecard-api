@@ -6,6 +6,7 @@ const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
 const { getAllowKeys } = require("../lib/acf_contract");
+const { categoryOf } = require('../lib/rule_exec');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -89,13 +90,28 @@ module.exports = async function handler(req, res) {
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
 
     const fmap = require('../lib/rule_exec').loadIntentMap();
-    const required = (fmap.policy?.required||[]).filter(k => allow.has(k));
+    const policy = fmap.policy || {};
+    const required = (policy.required||[]).filter(k => allow.has(k));
     const presentSet = new Set(intent.sent_keys||[]);
     const missingRequired = required.filter(k => !presentSet.has(k));
+    const catCounts = {};
+    for (const k of presentSet) {
+      const c = categoryOf(k);
+      catCounts[c] = (catCounts[c]||0)+1;
+    }
+    const missingCategories = [];
+    if (policy.category_min) {
+      for (const [cat,min] of Object.entries(policy.category_min)) {
+        if ((catCounts[cat]||0) < min) missingCategories.push(cat);
+      }
+    }
+    const overallMin = policy.overall_min || 0;
+    const overallCount = presentSet.size;
+    const policyFail = missingRequired.length || missingCategories.length || (overallMin && overallCount < overallMin);
     const isPush = req.query.push==='1'||req.query.push===1||req.query.push===true||req.query.push==='true';
-    if (isPush && missingRequired.length) {
-      debug.trace.push({stage:"policy_check", missingRequired, required});
-      return res.status(422).json({ ok:false, reason:"policy_failed", missingRequired, debug });
+    if (isPush && policyFail) {
+      debug.trace.push({ stage: 'policy_check', missingRequired, missingCategories, required, category_min: policy.category_min, overall_min: overallMin });
+      return res.status(422).json({ ok: false, reason: 'policy_failed', missingRequired, missingCategories, debug });
     }
     let wordpress;
     if (isPush) {

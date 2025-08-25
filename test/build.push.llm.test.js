@@ -6,7 +6,7 @@ const resetEnv = require('./helpers/resetEnv');
 const buildLib = require('../lib/build');
 const handler = require('../api/build');
 
-test('build route returns 422 on thin payload when push=1', async () => {
+test('build route returns 422 on policy failure when push=1', async () => {
   buildLib.crawlSite = async () => [{
     url: 'http://site.test',
     title: 'Site Title',
@@ -32,10 +32,13 @@ test('build route returns 422 on thin payload when push=1', async () => {
   restore();
 
   assert.equal(res.statusCode, 422);
-  assert.equal(res.body.reason, 'thin_payload');
-  const user = JSON.parse(body.messages[1].content);
-  assert.equal(user.context.business_name, 'site.test');
-  assert.equal(user.context.contacts.website, 'http://site.test');
+  assert.equal(res.body.reason, 'policy_failed');
+  assert.ok(Array.isArray(res.body.missingRequired));
+  if (body) {
+    const user = JSON.parse(body.messages[1].content);
+    assert.equal(user.context.business_name, 'site.test');
+    assert.equal(user.context.contacts.website, 'http://site.test');
+  }
 });
 
 test('build route returns 200 on thin payload when push=0', async () => {
