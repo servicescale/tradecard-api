@@ -4,21 +4,31 @@ stage: publish
 
 inputs:
   structured_profile: "mk4/capsules/profile_generator/data/profiles/{slug}_structured.yaml"
-  acf_schema: "mk4/capsules/profile_generator/config/acf_field_list.yaml"
+  acf_contract: "config/acf_contract.yaml"
   backlog_file: "mk4/capsules/profile_generator/config/profiles_backlog.yaml"
 
 steps:
-  - name: LOAD structured profile and schema
+  - name: LOAD structured profile and ACF contract
     run: |
       profile_data = load_yaml(inputs.structured_profile)
-      acf_schema = load_yaml(inputs.acf_schema)
+      acf_contract = load_yaml(inputs.acf_contract)
+      acf_allow   = set(acf_contract["allow"])
+      acf_aliases = acf_contract.setdefault("aliases", {})  # optional block
 
-  - name: CHECK for null text values and strip non-ACF keys
+  - name: APPLY alias remap, null-safe text normalisation, then strip to ACF allow
     run: |
+      # 1) Remap aliases (e.g., service_3_inclusion_3 -> service_3_Inclusion_3)
+      remapped = {}
       for key, value in profile_data.items():
-        if key in acf_schema and value is None:
+        target = acf_aliases.get(key, key)
+        remapped[target] = value
+      profile_data = remapped
+
+      # 2) Replace nulls with "" only for keys that ACF accepts
+      for key, value in profile_data.items():
+        if key in acf_allow and value is None:
           profile_data[key] = ""
-      profile_data = {k: v for k, v in profile_data.items() if k in acf_schema}
+      profile_data = {k: v for k, v in profile_data.items() if k in acf_allow}
 
   - name: EXECUTE image upload and replacement
     run: |
