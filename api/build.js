@@ -6,6 +6,7 @@ const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
 const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract.ts");
+const { loadMap, enforcePolicy } = require("../lib/policy.ts");
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -77,6 +78,12 @@ module.exports = async function handler(req, res) {
 
     const intent = await applyIntent(result.tradecard, { raw });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
+
+    const map = loadMap();
+    const { clean, rejected } = enforcePolicy(intent.fields, map);
+    intent.fields = clean;
+    intent.sent_keys = Object.keys(clean).filter(k => clean[k] !== null);
+    debug.trace.push({ step: 'policy_enforce', rejected });
 
     const fmap = require('../lib/intent_map').loadIntentMap();
     const reqSet = require('../lib/intent_map').requiredFromMap(fmap);
