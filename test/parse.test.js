@@ -18,6 +18,9 @@ test('parse extracts canonical images, headings, socials, contacts', async () =>
   assert.deepEqual(page.headings.h1, ['H1']);
   assert.deepEqual(page.headings.h2, ['H2']);
   assert.deepEqual(page.headings.h3, ['H3']);
+  assert.deepEqual(page.headings.h4, ['H4']);
+  assert.deepEqual(page.headings.h5, ['H5']);
+  assert.deepEqual(page.headings.h6, ['H6']);
   assert.ok(page.images.every(u => u.startsWith('http://example.com/') && !u.includes('?') && !u.includes('#')));
   assert.equal(new Set(page.images).size, page.images.length);
   const plats = ['facebook','instagram','linkedin','twitter','youtube','tiktok','pinterest'];
