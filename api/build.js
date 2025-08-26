@@ -56,29 +56,14 @@ module.exports = async function handler(req, res) {
       headings: (pages || [])
         .flatMap((p) => Object.values(p.headings || {}))
         .flat()
-        .map((t) => ({ text: t })),
+        .map((t) => t || ''),
       images: (pages || [])
         .flatMap((p) => p.images || [])
-        .map((i) => ({ src: i.src || '', alt: i.alt || '' })),
+        .map((i) => i.src || ''),
       url: startUrl,
       meta: pages?.[0]?.meta || {},
       jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || []
     };
-
-    trace.push({
-      stage: 'intent_input',
-      tradecard_counts: {
-        name: !!result.tradecard?.business?.name,
-        website: !!result.tradecard?.contacts?.website
-      },
-      raw_counts: {
-        anchors: raw.anchors.length,
-        headings: raw.headings.length,
-        images: raw.images.length,
-        meta: Object.keys(raw.meta || {}).length,
-        jsonld: raw.jsonld.length
-      }
-    });
 
     const intent = await applyIntent(result.tradecard, { raw, fullFrame, opts: { noLLM } });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
@@ -89,7 +74,9 @@ module.exports = async function handler(req, res) {
     intent.sent_keys = Object.keys(clean).filter(k => clean[k] !== null);
     debug.trace.push({ step: 'policy_enforce', rejected });
     result.intent = intent;
-    const isPush = (req.query.push==='1' || req.query.push===1 || req.query.push===true || req.query.push==='true');
+    const pushParam = Array.isArray(req.query.push) ? req.query.push[0] : req.query.push;
+    const isPush = ['1', 'true', 1, true].includes(pushParam);
+    const guardPush = pushParam === '1' || pushParam === 1;
     const min = Number(process.env.MIN_ACF_KEYS)||10;
 
     const allow = new Set(getAllowKeys());
@@ -101,7 +88,7 @@ module.exports = async function handler(req, res) {
     const resolveDecision = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: covThreshold });
     trace.push({ stage: 'gate', type: 'resolve', ...resolveDecision, coverage });
 
-    if (isPush && (intent.sent_keys||[]).length < min) {
+    if (guardPush && (intent.sent_keys||[]).length < min) {
       return res.status(422).json({
         ok: false,
         reason: 'thin_payload',
