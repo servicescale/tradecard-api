@@ -32,7 +32,7 @@ const SPEC = {
       get: {
         operationId: "scrapePage",
         summary: "Scrape a single page",
-        description: "Fetches one page and returns language, title, headings (h1–h3), images (including CSS backgrounds), absolute links, plus socials and contacts derived from links.",
+        description: "Fetches one page and returns title, headings (h1–h6), images (including CSS backgrounds), absolute links, plus socials and contacts derived from links.",
         parameters: [
           { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" }, description: "Absolute http(s) URL to scrape" },
           { name: "limitImages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 500 }, description: "Cap number of images returned" },
@@ -106,7 +106,7 @@ const SPEC = {
       Heading: {
         type: "object",
         properties: {
-          level: { type: "string", enum: ["h1","h2","h3"] },
+          level: { type: "string", enum: ["h1","h2","h3","h4","h5","h6"] },
           text: { type: "string" },
           url:  { type: "string", format: "uri" }
         },
@@ -127,6 +127,14 @@ const SPEC = {
           phones: { type: "array", items: { type: "string" } }
         }
       },
+      Image: {
+        type: "object",
+        properties: {
+          url: { type: "string", format: "uri" },
+          alt: { type: "string", nullable: true }
+        },
+        required: ["url"]
+      },
       Page: {
         type: "object",
         properties: {
@@ -138,10 +146,13 @@ const SPEC = {
             properties: {
               h1: { type: "array", items: { type: "string" } },
               h2: { type: "array", items: { type: "string" } },
-              h3: { type: "array", items: { type: "string" } }
+              h3: { type: "array", items: { type: "string" } },
+              h4: { type: "array", items: { type: "string" } },
+              h5: { type: "array", items: { type: "string" } },
+              h6: { type: "array", items: { type: "string" } }
             }
           },
-          images: { type: "array", items: { type: "string", format: "uri" } },
+          images: { type: "array", items: { $ref: "#/components/schemas/Image" } },
           links:  { type: "array", items: { type: "string", format: "uri" } },
           social: { type: "array", items: { $ref: "#/components/schemas/SocialLink" } },
           contacts: { $ref: "#/components/schemas/Contacts" }
