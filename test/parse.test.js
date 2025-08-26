@@ -65,3 +65,22 @@ test('parse extracts on-site testimonials', async () => {
     job_type: 'Deck installation'
   });
 });
+
+test('parse enriches identity fields from Organization JSON-LD', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/jsonld-org.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.equal(page.identity_business_name, 'Acme Corp');
+  assert.equal(page.identity_logo_url, 'http://example.com/logo.png');
+  assert.equal(page.identity_address, '123 Street, Townsville, NSW');
+  assert.equal(page.identity_phone, '+61 2 1234 5678');
+  assert.ok(page.social.find(s => s.platform === 'facebook' && s.url === 'https://facebook.com/acme'));
+  assert.ok(page.social.find(s => s.platform === 'twitter' && s.url === 'https://twitter.com/acme'));
+});
+
+test('parse enriches identity fields from Person JSON-LD', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/jsonld-person.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.equal(page.identity_owner_name, 'John Smith');
+  assert.equal(page.identity_phone, '+1 555 000');
+  assert.ok(page.social.find(s => s.platform === 'instagram' && s.url === 'https://instagram.com/johnsmith'));
+});
