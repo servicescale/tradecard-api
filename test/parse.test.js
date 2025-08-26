@@ -83,3 +83,25 @@ test('parse enriches identity fields from Person JSON-LD', async () => {
   assert.equal(page.identity_phone, '+1555000');
   assert.ok(page.social.find(s => s.platform === 'instagram' && s.url === 'https://instagram.com/johnsmith'));
 });
+
+test('parse extracts extended meta fields and counts', async () => {
+  const restore = mockFetch({ 'https://example.com/style.css': { body: '' } });
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/meta.html'), 'utf8');
+  const page = await parse(html, 'https://example.com');
+  restore();
+  assert.equal(page.canonical_url, 'https://example.com/canonical');
+  assert.equal(page.meta_description, 'Desc');
+  assert.equal(page.og_title, 'OG Title');
+  assert.equal(page.twitter_card, 'summary_large_image');
+  assert.equal(page.favicon_url, 'https://example.com/favicon.ico');
+  assert.equal(page.apple_touch_icon_url, 'https://example.com/apple.png');
+  assert.equal(page.link_internal_count, 1);
+    assert.equal(page.link_external_count, 2);
+  assert.equal(page.link_mailto_count, 1);
+  assert.equal(page.link_tel_count, 1);
+  assert.equal(page.link_sms_count, 1);
+  assert.equal(page.link_whatsapp_count, 1);
+  assert.equal(page.script_count, 2);
+  assert.equal(page.stylesheet_count, 1);
+  assert.equal(page.first_paragraph_text, 'First paragraph.');
+});
