@@ -14,7 +14,7 @@ test('build route returns 200 on thin payload when push=0', async () => {
     links: [],
     social: [],
     contacts: { emails: [], phones: [] },
-    headings: { h1: [], h2: [], h3: [] }
+    headings: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
   }];
 
   resetEnv({ OPENAI_API_KEY: 'k' });
