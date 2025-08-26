@@ -35,6 +35,15 @@ test('parse extracts canonical images, headings, socials, contacts', async () =>
   assert.deepEqual(page.contacts.phones, ['+123456']);
 });
 
+test('parse finds contacts in free text', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/free_text_contact.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.deepEqual(page.contacts.emails, ['contact@example.com']);
+  assert.deepEqual(page.contacts.phones, ['+61400123456']);
+  assert.equal(page.identity_email, 'contact@example.com');
+  assert.equal(page.identity_phone, '+61400123456');
+});
+
 test('parse captures videos, contact forms and awards', async () => {
   const html = fs.readFileSync(path.join(__dirname, 'fixtures/trust_theme.html'), 'utf8');
   const page = await parse(html, 'https://example.com');
