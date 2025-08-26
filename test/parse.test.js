@@ -15,6 +15,7 @@ test('parse extracts canonical images, headings, socials, contacts', async () =>
   restore();
 
   assert.equal(page.title, 'Simple Page');
+  assert.equal(page.page_language, 'en');
   assert.deepEqual(page.headings.h1, ['H1']);
   assert.deepEqual(page.headings.h2, ['H2']);
   assert.deepEqual(page.headings.h3, ['H3']);

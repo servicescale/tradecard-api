@@ -57,7 +57,7 @@ const SPEC = {
       get: {
         operationId: "crawlSite",
         summary: "Crawl a site (same-origin)",
-        description: "Breadth-first traversal from the start URL, same-origin by default. Aggregates page data but does not build a TradeCard.",
+        description: "Breadth-first traversal from the start URL, same-origin by default. Aggregates page data (including language) but does not build a TradeCard.",
         parameters: [
           { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" } },
           { name: "maxPages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 10 } },
@@ -140,6 +140,7 @@ const SPEC = {
         properties: {
           url: { type: "string", format: "uri" },
           title: { type: "string", nullable: true },
+          page_language: { type: "string", nullable: true },
           headings: {
             type: "object",
             properties: {
