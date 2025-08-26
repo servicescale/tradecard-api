@@ -1,0 +1,24 @@
+name: Acceptance
+on:
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: accept-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  accept:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Run acceptance gates
+        env:
+          BASE: ${{ secrets.ACCEPT_BASE }}
+          TARGET: ${{ secrets.ACCEPT_TARGET }}
+          ACCEPT_MIN_COVERAGE: ${{ vars.ACCEPT_MIN_COVERAGE || 10 }}
+        run: bash scripts/accept.sh
