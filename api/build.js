@@ -87,6 +87,7 @@ module.exports = async function handler(req, res) {
     intent.fields = clean;
     intent.sent_keys = Object.keys(clean).filter(k => clean[k] !== null);
     debug.trace.push({ step: 'policy_enforce', rejected });
+    result.intent = intent;
     const isPush = (req.query.push==='1' || req.query.push===1 || req.query.push===true || req.query.push==='true');
     const min = Number(process.env.MIN_ACF_KEYS)||10;
 
@@ -108,8 +109,11 @@ module.exports = async function handler(req, res) {
         debug
       });
     }
-    if (!isPush && !resolveDecision.pass) {
-      return res.status(200).json({ ok: false, reason: resolveDecision.reason, debug });
+    if (!isPush) {
+      result.ok = true;
+      result.wordpress = { skipped: true, reason: 'push not requested' };
+      if (req.query?.debug === '1') result.debug = debug;
+      return res.status(200).json(result);
     }
     let wordpress;
     if (isPush) {
@@ -187,8 +191,6 @@ module.exports = async function handler(req, res) {
           wordpress = { ok: false, post_id: postId, details: { steps } };
         }
       }
-    } else {
-      wordpress = { skipped: true, reason: 'push not requested' };
     }
     result.wordpress = wordpress;
 
