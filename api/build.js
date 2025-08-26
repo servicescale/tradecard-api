@@ -60,6 +60,7 @@ module.exports = async function handler(req, res) {
       images: (pages || [])
         .flatMap((p) => p.images || [])
         .map((i) => ({ src: i.src || '', alt: i.alt || '' })),
+      url: startUrl,
       meta: pages?.[0]?.meta || {},
       jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || []
     };
