@@ -31,7 +31,7 @@ test('applyIntent populates identity and service fields and falls back to LLM', 
 
   const { applyIntent } = require('../lib/intent');
   const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/apply-intent.raw.json'), 'utf8'));
-  const { fields } = await applyIntent({}, { raw });
+  const { fields, trace } = await applyIntent({}, { raw });
 
   assert.equal(fields.identity_owner_name, 'Jane Smith');
   assert.equal(fields.identity_website_url, 'http://biz.example.com/');
@@ -49,6 +49,10 @@ test('applyIntent populates identity and service fields and falls back to LLM', 
   const payload = JSON.parse(body.messages[1].content);
   assert.ok(payload.links.some((l) => l.href === 'mailto:info@biz.example.com'));
   assert.ok(payload.images.some((i) => i.src === 'http://biz.example.com/service1.jpg'));
+
+  const unresolved = trace.find((t) => t.stage === 'unresolved');
+  assert.ok(unresolved, 'missing unresolved stage');
+  assert.ok(unresolved.remaining.includes('identity_role_title'));
 
   global.fetch = origFetch;
   process.env.OPENAI_API_KEY = origKey;
