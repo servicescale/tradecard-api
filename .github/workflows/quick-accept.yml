@@ -1,0 +1,42 @@
+name: Quick Acceptance (no scrape)
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  quick-accept:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+
+      - name: Load critical modules (syntax/merge safety)
+        run: |
+          set -e
+          node -e "require('./lib/intent.js'); console.log('intent.js OK')"
+          # Optional: load if present (ignore if absent)
+          node -e "try{require('./lib/detExtractors.js'); console.log('detExtractors OK')}catch(e){process.exit(0)}"
+          node -e "try{require('./lib/llmFullFrame.js'); console.log('llmFullFrame OK')}catch(e){process.exit(0)}"
+
+      - name: Block changes to immutables
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: |
+          set -e
+          git fetch --no-tags --prune --depth=1 origin "+${BASE_SHA}:${BASE_SHA}" || true
+          CHANGED=$(git diff --name-only "$BASE_SHA"...HEAD || git diff --name-only || true)
+          echo "$CHANGED" | sed '/^$/d' || true
+          # Fail if immutables changed
+          if echo "$CHANGED" | grep -E '^(config/resolve.yaml|config/field_intent_map.yaml)$' >/dev/null; then
+            echo "❌ Immutable files changed"; exit 1;
+          fi
+
+      - name: Print local acceptance hint (manual, optional)
+        run: |
+          echo "Run locally when ready:"
+          echo 'BASE="http://localhost:3000" TARGET="https://poolboysco.com.au" MIN=30; DET="$(curl -sG "$BASE/api/build" --data-urlencode "url=$TARGET" --data "push=0" --data "debug=1" --data "no_llm=1")"; FULL="$(curl -sG "$BASE/api/build" --data-urlencode "url=$TARGET" --data "push=0" --data "debug=1")"; DET_AFTER=$(printf "%s" "$DET"  | jq -r '\''[.debug.trace[]?|select(.stage=="intent_coverage")][0].after // 0'\''); FULL_AFTER=$(printf "%s" "$FULL" | jq -r '\''[.debug.trace[]?|select(.stage=="intent_coverage")][0].after // 0'\''); echo "det_after=$DET_AFTER full_after=$FULL_AFTER";'
