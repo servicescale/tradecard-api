@@ -34,3 +34,60 @@ test('detSeed rejects invalid headshot url', () => {
   const result = helpers.detSeed({ raw });
   assert.ok(!result.identity_headshot_url);
 });
+
+test('detSeed extracts address from Google Maps anchor', () => {
+  const raw = {
+    anchors: [
+      {
+        href: 'https://www.google.com/maps/place/123+Main+St,+Sydney+NSW',
+        text: '123 Main St, Sydney NSW'
+      }
+    ]
+  };
+  const result = helpers.detSeed({ raw });
+  assert.equal(
+    result.identity_address_uri,
+    'https://www.google.com/maps/place/123+Main+St,+Sydney+NSW'
+  );
+  assert.equal(result.identity_address, '123 Main St, Sydney NSW');
+});
+
+test('detSeed extracts address from Google Maps text block', () => {
+  const raw = {
+    text_blocks: [
+      'Find us at https://maps.google.com/?q=456+High+St+Melbourne+VIC'
+    ]
+  };
+  const result = helpers.detSeed({ raw });
+  assert.equal(
+    result.identity_address_uri,
+    'https://maps.google.com/?q=456+High+St+Melbourne+VIC'
+  );
+  assert.equal(result.identity_address, '456 High St Melbourne VIC');
+});
+
+test('detSeed extracts contact URIs', () => {
+  const raw = {
+    anchors: [
+      { href: 'mailto:info@example.com' },
+      { href: 'sms:+61412345678' }
+    ],
+    text_blocks: ['Reach us on WhatsApp: https://wa.me/61412345678']
+  };
+  const result = helpers.detSeed({ raw });
+  assert.equal(result.identity_uri_email, 'mailto:info@example.com');
+  assert.equal(result.identity_uri_whatsapp, 'https://wa.me/61412345678');
+  assert.equal(result.identity_uri_sms, 'sms:+61412345678');
+});
+
+test('detSeed aggregates service areas from headings and links', () => {
+  const raw = {
+    headings: [{ text: 'Sydney and Newcastle' }],
+    anchors: [{ href: '#', text: 'Wollongong' }]
+  };
+  const result = helpers.detSeed({ raw });
+  const areas = result.service_areas_csv.split(',');
+  assert.ok(areas.includes('Sydney'));
+  assert.ok(areas.includes('Newcastle'));
+  assert.ok(areas.includes('Wollongong'));
+});
