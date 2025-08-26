@@ -18,6 +18,10 @@ test('parse extracts canonical images, headings, socials, contacts', async () =>
   assert.deepEqual(page.headings.h1, ['H1']);
   assert.deepEqual(page.headings.h2, ['H2']);
   assert.deepEqual(page.headings.h3, ['H3']);
+  assert.ok(page.images.every(i => i.url.startsWith('http://example.com/') && !i.url.includes('?') && !i.url.includes('#')));
+  assert.equal(new Set(page.images.map(i => i.url)).size, page.images.length);
+  assert.equal(page.images.find(i => i.alt === 'Duplicate').url, 'http://example.com/dup.png');
+  assert.equal(page.images.find(i => i.alt === 'Lazy').url, 'http://example.com/other.png');
   assert.deepEqual(page.headings.h4, ['H4']);
   assert.deepEqual(page.headings.h5, ['H5']);
   assert.deepEqual(page.headings.h6, ['H6']);

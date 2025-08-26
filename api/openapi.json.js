@@ -127,6 +127,14 @@ const SPEC = {
           phones: { type: "array", items: { type: "string" } }
         }
       },
+      Image: {
+        type: "object",
+        properties: {
+          url: { type: "string", format: "uri" },
+          alt: { type: "string", nullable: true }
+        },
+        required: ["url"]
+      },
       Page: {
         type: "object",
         properties: {
@@ -143,7 +151,7 @@ const SPEC = {
               h6: { type: "array", items: { type: "string" } }
             }
           },
-          images: { type: "array", items: { type: "string", format: "uri" } },
+          images: { type: "array", items: { $ref: "#/components/schemas/Image" } },
           links:  { type: "array", items: { type: "string", format: "uri" } },
           social: { type: "array", items: { $ref: "#/components/schemas/SocialLink" } },
           contacts: { $ref: "#/components/schemas/Contacts" }
