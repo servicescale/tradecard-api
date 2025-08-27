@@ -1,8 +1,11 @@
 const { ReadableStream } = require('node:stream/web');
+const fs = require('fs');
 
 module.exports = function mockFetch(routes = {}) {
-  const orig = global.fetch;
+  const origFetch = global.fetch;
+  const origAppend = fs.appendFileSync;
   const calls = [];
+  const appends = [];
   global.fetch = async (url, opts = {}) => {
     const key = typeof url === 'string' ? url : url.url;
     calls.push({ url: key, opts });
@@ -31,7 +34,14 @@ module.exports = function mockFetch(routes = {}) {
       })
     };
   };
-  const restore = () => { global.fetch = orig; };
+  fs.appendFileSync = (file, data) => {
+    appends.push({ file, data: String(data) });
+  };
+  const restore = () => {
+    global.fetch = origFetch;
+    fs.appendFileSync = origAppend;
+  };
   restore.calls = calls;
+  restore.appends = appends;
   return restore;
 };
