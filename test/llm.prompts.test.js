@@ -1,30 +1,46 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('node:path');
 
-test('applyIntent uses default LLM prompts for description fields', async () => {
-  const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures/apply-intent.raw.json'), 'utf8'));
-
+test('llm resolver handles structured JSON and confidence', async () => {
   const origKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = 'test-key';
 
-  const calls = [];
   const LONG_TEXT = Array(40).fill('word').join(' ');
+  const calls = [];
   const origFetch = global.fetch;
   global.fetch = async (url, opts) => {
     const payload = JSON.parse(JSON.parse(opts.body).messages[1].content);
-    calls.push(payload.instructions);
-    return { json: async () => ({ choices: [{ message: { content: LONG_TEXT } }] }) };
+    calls.push(payload);
+    return {
+      json: async () => ({
+        choices: [{ message: { content: JSON.stringify({ value: LONG_TEXT, confidence: 0.9 }) } }]
+      })
+    };
   };
 
-  const { applyIntent } = require('../lib/intent');
-  const { fields } = await applyIntent({}, { raw });
+  const { resolveField } = require('../lib/llm_resolver');
+  const result = await resolveField('business_description', {}, {
+    raw: {},
+    unresolved: ['business_description'],
+    snippet: 'sample context'
+  });
 
-  assert.equal(fields.business_description, LONG_TEXT);
-  assert.equal(fields.service_1_description, LONG_TEXT);
-  assert.ok(calls.some((i) => /business/i.test(i)));
-  assert.ok(calls.some((i) => /service 1/i.test(i)));
+  assert.equal(result, LONG_TEXT);
+  assert.deepStrictEqual(calls[0].unresolved_fields, ['business_description']);
+  assert.equal(calls[0].context_snippet, 'sample context');
+  assert.ok(/business/i.test(calls[0].instructions));
+
+  global.fetch = async () => ({
+    json: async () => ({
+      choices: [{ message: { content: JSON.stringify({ value: LONG_TEXT, confidence: 0.2 }) } }]
+    })
+  });
+  const rejected = await resolveField(
+    'business_description',
+    { llm: { confidence_threshold: 0.5 } },
+    { raw: {} }
+  );
+  assert.equal(rejected, '');
 
   global.fetch = origFetch;
   process.env.OPENAI_API_KEY = origKey;
