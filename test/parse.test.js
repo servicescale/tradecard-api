@@ -107,6 +107,8 @@ test('parse extracts extended meta fields and counts', async () => {
   restore();
   assert.equal(page.canonical_url, 'https://example.com/canonical');
   assert.equal(page.meta_description, 'Desc');
+  assert.equal(page.meta_theme_color, '#ff0000');
+  assert.equal(page.theme_primary_color, '#ff0000');
   assert.equal(page.og_title, 'OG Title');
   assert.equal(page.twitter_card, 'summary_large_image');
   assert.equal(page.favicon_url, 'https://example.com/favicon.ico');
@@ -120,6 +122,20 @@ test('parse extracts extended meta fields and counts', async () => {
   assert.equal(page.script_count, 2);
   assert.equal(page.stylesheet_count, 1);
   assert.equal(page.first_paragraph_text, 'First paragraph.');
+});
+
+test('parse derives theme_primary_color from inline CSS vars', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/theme_color_inline.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.equal(page.theme_primary_color, '#112233');
+});
+
+test('parse derives theme_primary_color from linked stylesheet vars', async () => {
+  const restore = mockFetch({ 'http://example.com/theme.css': { body: ':root{--color-primary:#abcdef;}' } });
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/theme_color_linked.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  restore();
+  assert.equal(page.theme_primary_color, '#abcdef');
 });
 
 test('detExtractors handle rare phone, address and ID patterns', async () => {
