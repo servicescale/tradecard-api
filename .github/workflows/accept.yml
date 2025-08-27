@@ -1,6 +1,6 @@
+# Manual run only; requires a running server (BASE/TARGET).
 name: Acceptance
 on:
-  pull_request:
   workflow_dispatch:
 concurrency:
   group: accept-${{ github.ref }}
