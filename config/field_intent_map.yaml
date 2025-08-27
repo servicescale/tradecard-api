@@ -202,8 +202,12 @@ service_1_price_note:
 
 service_1_description:
   priority: required
+  strategy: det_then_llm
   tools: [site_scraper]
   fallback: false
+  llm:
+    validate:
+      min_words: 30
   constraints:
     min_words: 30
 
@@ -292,8 +296,12 @@ service_2_price_note:
 
 service_2_description:
   priority: required
+  strategy: det_then_llm
   tools: [site_scraper]
   fallback: false
+  llm:
+    validate:
+      min_words: 30
   constraints:
     min_words: 30
 
@@ -382,8 +390,12 @@ service_3_price_note:
 
 service_3_description:
   priority: required
+  strategy: det_then_llm
   tools: [site_scraper]
   fallback: false
+  llm:
+    validate:
+      min_words: 30
   constraints:
     min_words: 30
 
@@ -657,8 +669,13 @@ social_links_youtube:
 
 business_description:
   priority: recommended
+  strategy: det_then_llm
   tools: [site_scraper]
   fallback: false
+  llm:
+    validate:
+      min_words: 20
+      max_len: 240
   constraints:
     min_words: 20
     max_length: 240
@@ -682,8 +699,12 @@ testimonial_location:
 
 testimonial_quote:
   priority: required_if_testimonial
+  strategy: det_then_llm
   tools: [site_scraper, gmb_lookup]
   fallback: false
+  llm:
+    validate:
+      min_words: 20
   constraints:
     min_words: 20
     reviewer_required: true
