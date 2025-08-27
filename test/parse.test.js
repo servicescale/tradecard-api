@@ -5,6 +5,7 @@ const path = require('node:path');
 const { parse } = require('../lib/parse');
 const mockFetch = require('./helpers/mockFetch');
 const det = require('../lib/detExtractors');
+const { applyIntent } = require('../lib/intent');
 
 test('parse extracts canonical images, headings, socials, contacts', async () => {
   const restore = mockFetch({
@@ -130,4 +131,15 @@ test('detExtractors handle rare phone, address and ID patterns', async () => {
   assert.equal(ph.value, '+61298765432');
   assert.equal(abn.value, '12345678901');
   assert.equal(addr.value, 'PO Box 123, Townsville NSW 3000');
+});
+
+test('intent fills address when parse misses but det.getAddress succeeds', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/address_heading_only.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.equal(page.identity_address, null);
+  const addr = det.getAddress(page);
+  assert.equal(addr.value, '456 Example Street, Sydney, NSW 2000');
+  const raw = { ...page, headings: Object.values(page.headings).flat() };
+  const { fields } = await applyIntent({}, { raw, opts: { noLLM: true } });
+  assert.equal(fields.identity_address, '456 Example Street, Sydney, NSW 2000');
 });
