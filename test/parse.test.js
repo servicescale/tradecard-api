@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { parse } = require('../lib/parse');
 const mockFetch = require('./helpers/mockFetch');
+const det = require('../lib/detExtractors');
 
 test('parse extracts canonical images, headings, socials, contacts', async () => {
   const restore = mockFetch({
@@ -118,4 +119,15 @@ test('parse extracts extended meta fields and counts', async () => {
   assert.equal(page.script_count, 2);
   assert.equal(page.stylesheet_count, 1);
   assert.equal(page.first_paragraph_text, 'First paragraph.');
+});
+
+test('detExtractors handle rare phone, address and ID patterns', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/rare_patterns.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  const ph = det.getPhone(page);
+  const abn = det.getABN(page);
+  const addr = det.getAddress(page);
+  assert.equal(ph.value, '+61298765432');
+  assert.equal(abn.value, '12345678901');
+  assert.equal(addr.value, 'PO Box 123, Townsville NSW 3000');
 });
