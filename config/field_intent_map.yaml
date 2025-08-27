@@ -47,6 +47,8 @@ identity_abn:
   priority: recommended
   tools: [site_scraper]
   fallback: false
+  constraints:
+    regex: "^(?:\\d[\\s-]?){11}$"
 
 identity_insured:
   priority: optional
@@ -81,7 +83,7 @@ identity_phone:
   fallback: false
   constraints:
     format: spaced_human_readable
-    regex: "^\\+?[0-9 ]+$"
+    regex: "^\\+?[0-9 ()-]+$"
 
 identity_website:
   priority: required
