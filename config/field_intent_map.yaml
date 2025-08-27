@@ -433,7 +433,7 @@ service_3_inclusion_2:
   fallback: true
   constraints: *_inclusion_constraints
 
-service_3_Inclusion_3:
+service_3_inclusion_3:
   priority: required
   tools: [site_scraper]
   fallback: true
