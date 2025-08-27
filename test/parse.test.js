@@ -100,6 +100,14 @@ test('parse detects alternate panels, projects, owner and contact form', async (
   assert.deepEqual(page.contact_form_links, ['http://example.com/submit']);
 });
 
+test('parse extracts service panel titles', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/service_panel_titles.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.equal(page.service_panels.length, 2);
+  assert.equal(page.service_panels[0].title, 'Panel 1');
+  assert.equal(page.service_panels[1].title, 'Panel 2');
+});
+
 test('parse extracts extended meta fields and counts', async () => {
   const restore = mockFetch({ 'https://example.com/style.css': { body: '' } });
   const html = fs.readFileSync(path.join(__dirname, 'fixtures/meta.html'), 'utf8');
