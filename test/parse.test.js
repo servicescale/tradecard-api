@@ -84,6 +84,20 @@ test('parse enriches identity fields from Person JSON-LD', async () => {
   assert.ok(page.social.find(s => s.platform === 'instagram' && s.url === 'https://instagram.com/johnsmith'));
 });
 
+test('parse detects alternate panels, projects, owner and contact form', async () => {
+  const html = fs.readFileSync(path.join(__dirname, 'fixtures/alt_patterns.html'), 'utf8');
+  const page = await parse(html, 'http://example.com');
+  assert.equal(page.service_panels.length, 2);
+  assert.equal(page.service_panels[0].price, '$50');
+  assert.equal(page.service_panels[1].price, '$80');
+  assert.equal(page.projects.length, 1);
+  assert.equal(page.projects[0].title, 'Project Alpha');
+  assert.equal(page.identity_owner_name, 'Alice Owner');
+  assert.equal(page.identity_role_title, 'Founder');
+  assert.equal(page.identity_headshot_url, 'http://example.com/headshot.jpg');
+  assert.deepEqual(page.contact_form_links, ['http://example.com/submit']);
+});
+
 test('parse extracts extended meta fields and counts', async () => {
   const restore = mockFetch({ 'https://example.com/style.css': { body: '' } });
   const html = fs.readFileSync(path.join(__dirname, 'fixtures/meta.html'), 'utf8');
