@@ -22,12 +22,14 @@ test('llm resolver handles structured JSON and confidence', async () => {
   const result = await resolveField('business_description', {}, {
     raw: {},
     unresolved: ['business_description'],
-    snippet: 'sample context'
+    snippet: 'sample context',
+    fields: { foo: 'bar' }
   });
 
   assert.equal(result, LONG_TEXT);
   assert.deepStrictEqual(calls[0].unresolved_fields, ['business_description']);
   assert.equal(calls[0].context_snippet, 'sample context');
+  assert.deepStrictEqual(calls[0].existing_fields, { foo: 'bar' });
   assert.ok(/business/i.test(calls[0].instructions));
 
   global.fetch = async () => ({
