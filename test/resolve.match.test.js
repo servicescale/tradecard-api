@@ -18,3 +18,11 @@ test('pickBest returns high confidence for exact match', () => {
   assert.equal(out.matched, 'id');
   assert.equal(out.confidence, 1);
 });
+
+test('pickBest uses aliases for matching', () => {
+  const candidates = { foo: { value: 'bar', aliases: ['business name'] } };
+  const out = pickBest(candidates, 'business_name');
+  assert.equal(out.value, 'bar');
+  assert.equal(out.matched, 'foo');
+  assert.ok(out.confidence > 0.5);
+});
