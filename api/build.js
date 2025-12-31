@@ -7,7 +7,7 @@ const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
 const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract.ts");
 const { loadMap, enforcePolicy } = require("../lib/policy.ts");
-const { computeCoverage } = require('../lib/coverage.ts');
+const { computeCoverage } = require('../lib/coverage');
 const { resolveGate, publishGate } = require('../lib/gates.ts');
 
 module.exports = async function handler(req, res) {
