@@ -10,6 +10,7 @@ const { loadMap, enforcePolicy } = require("../lib/policy");
 const { computeCoverage } = require('../lib/coverage');
 const { resolveGate, publishGate } = require('../lib/gates');
 const { Logger } = require('../lib/logger');
+const { lookupABN } = require('../services/abrLookup');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -82,6 +83,26 @@ module.exports = async function handler(req, res) {
     if (Array.isArray(intent.audit)) {
       const failed = intent.audit.filter((entry) => !entry.ok).length;
       Logger.log('AUDIT', 'Audit summary', { total: intent.audit.length, failed });
+    }
+
+    const abrInput = {
+      businessName: intent.fields.identity_business_name || result.tradecard.business.name,
+      tradingName: intent.fields.identity_trading_name || null,
+      state: intent.fields.identity_state || null
+    };
+    if (intent.fields.identity_abn_source !== 'abr') {
+      intent.fields.identity_abn = null;
+      intent.fields.identity_abn_source = null;
+    }
+    if (abrInput.businessName && intent.fields.identity_abn_source !== 'abr') {
+      const abrResult = await lookupABN(abrInput);
+      if (abrResult) {
+        intent.fields.identity_abn = abrResult.abn;
+        intent.fields.identity_abn_source = 'abr';
+      } else {
+        intent.fields.identity_abn = null;
+      }
+      trace.push({ stage: 'abr_lookup', found: !!abrResult });
     }
 
     const map = loadMap();

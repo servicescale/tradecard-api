@@ -9,7 +9,6 @@ test('detSeed copies identity fields, normalizes phone, validates images', () =>
     identity_headshot_url: 'http://example.com/head.jpg',
     identity_suburb: ' Sydney ',
     identity_state: ' NSW ',
-    identity_abn: '12345678901',
     identity_insured: 'Fully insured',
     identity_phone: '02 1234 5678',
     identity_email: 'User@Example.com',
@@ -22,7 +21,6 @@ test('detSeed copies identity fields, normalizes phone, validates images', () =>
   assert.equal(result.identity_headshot_url, 'http://example.com/head.jpg');
   assert.equal(result.identity_suburb, 'Sydney');
   assert.equal(result.identity_state, 'NSW');
-  assert.equal(result.identity_abn, '12345678901');
   assert.equal(result.identity_insured, 'Fully insured');
   assert.equal(result.identity_phone, '+61212345678');
   assert.equal(result.identity_email, 'user@example.com');

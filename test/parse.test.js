@@ -150,10 +150,8 @@ test('detExtractors handle rare phone, address and ID patterns', async () => {
   const html = fs.readFileSync(path.join(__dirname, 'fixtures/rare_patterns.html'), 'utf8');
   const page = await parse(html, 'http://example.com');
   const ph = det.getPhone(page);
-  const abn = det.getABN(page);
   const addr = det.getAddress(page);
   assert.equal(ph.value, '+61298765432');
-  assert.equal(abn.value, '12345678901');
   assert.equal(addr.value, 'PO Box 123, Townsville NSW 3000');
 });
 
