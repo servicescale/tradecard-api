@@ -9,6 +9,7 @@ const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract");
 const { loadMap, enforcePolicy } = require("../lib/policy");
 const { computeCoverage } = require('../lib/coverage');
 const { resolveGate, publishGate } = require('../lib/gates');
+const { Logger } = require('../lib/logger');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
@@ -19,18 +20,27 @@ module.exports = async function handler(req, res) {
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
   const fullFrame = ['1', 'true', 1, true].includes(req.query.full_frame);
   const noLLM = ['1', 'true', 1, true].includes(req.query.no_llm);
+  const debugMode = ['1', 'true', 1, true].includes(req.query?.debug);
+  Logger.setVerbose(debugMode);
   const trace = [];
   const debug = { trace };
   const aliases = getAliases();
 
   try {
+    Logger.log('BUILD', 'Build started', { url: startUrl, maxPages, maxDepth });
     const t0 = Date.now();
     const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
-    trace.push({ stage: 'crawl', ms: Date.now() - t0 });
+    const crawlMs = Date.now() - t0;
+    trace.push({ stage: 'crawl', ms: crawlMs });
+    Logger.log('CRAWL', 'Crawl completed', { pages: pages.length, ms: crawlMs });
+    const detectStart = Date.now();
     const result = buildTradecardFromPages(startUrl, pages);
+    Logger.log('DETECTION', 'Tradecard extracted', { ms: Date.now() - detectStart });
 
+    const inferStart = Date.now();
     const inferred = noLLM ? { _meta: { skipped: 'no_llm' } } : await inferTradecard(result.tradecard);
     trace.push({ stage: 'infer', ...inferred._meta });
+    Logger.log('LLM_MERGE', 'Inference completed', { ms: Date.now() - inferStart, meta: inferred._meta });
     if (inferred._meta?.ok) {
       if (inferred.business?.description) {
         result.tradecard.business.description = inferred.business.description;
@@ -65,8 +75,14 @@ module.exports = async function handler(req, res) {
       jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || []
     };
 
+    const intentStart = Date.now();
     const intent = await applyIntent(result.tradecard, { raw, fullFrame, opts: { noLLM } });
+    Logger.log('AUDIT', 'Intent resolved', { ms: Date.now() - intentStart, fields: Object.keys(intent.fields || {}).length });
     if (Array.isArray(intent.trace)) debug.trace.push(...intent.trace);
+    if (Array.isArray(intent.audit)) {
+      const failed = intent.audit.filter((entry) => !entry.ok).length;
+      Logger.log('AUDIT', 'Audit summary', { total: intent.audit.length, failed });
+    }
 
     const map = loadMap();
     const { clean, rejected } = enforcePolicy(intent.fields, map);
@@ -87,6 +103,7 @@ module.exports = async function handler(req, res) {
     const covThreshold = !Number.isNaN(covEnv) && covEnv < 0.5 ? covEnv : 0.5;
     const resolveDecision = resolveGate({ coverage, requiredPresent: requiredMissing.length === 0, threshold: covThreshold });
     trace.push({ stage: 'gate', type: 'resolve', ...resolveDecision, coverage });
+    Logger.log('BUILD', 'Resolve gate decision', resolveDecision);
 
     if (guardPush && (intent.sent_keys||[]).length < min) {
       return res.status(422).json({
@@ -183,10 +200,17 @@ module.exports = async function handler(req, res) {
     result.wordpress = wordpress;
 
     const output = result;
-    if (req.query?.debug === '1') output.debug = debug;
+    if (debugMode) output.debug = debug;
+
+    const totalFields = Object.keys(intent.fields || {}).length;
+    const unresolvedFields = Object.keys(intent.fields || {}).filter((k) => !intent.fields?.[k]).length;
+    const resolvedCount = totalFields - unresolvedFields;
+    const successRate = totalFields ? `${((resolvedCount / totalFields) * 100).toFixed(2)}%` : '0%';
+    Logger.log('BUILD', 'Build completed', { totalFields, unresolvedFields, successRate });
 
     return res.status(200).json(output);
   } catch (err) {
+    Logger.error('BUILD', 'Build failed', { message: err.message || String(err) });
     return res.status(500).json({ error: err.message || 'Failed to build card' });
   }
 };
