@@ -6,9 +6,9 @@ const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
 const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract.js");
-const { loadMap, enforcePolicy } = require("../lib/policy.ts");
+const { loadMap, enforcePolicy } = require("../lib/policy.js");
 const { computeCoverage } = require('../lib/coverage');
-const { resolveGate, publishGate } = require('../lib/gates.ts');
+const { resolveGate, publishGate } = require('../lib/gates.js');
 
 module.exports = async function handler(req, res) {
   const startUrl = req.query?.url;
