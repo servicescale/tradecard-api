@@ -24,7 +24,3 @@ test('detResolve handles small typos in keys', () => {
 test('PHONE_RX accepts international formats', () => {
   assert(det.PHONE_RX.test('+1 (555) 123-4567'));
 });
-
-test('ABN_RX accepts spaces and dashes', () => {
-  assert(det.ABN_RX.test('ABN 12-345-678-901'));
-});

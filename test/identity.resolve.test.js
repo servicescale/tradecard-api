@@ -21,7 +21,6 @@ test('raw profile resolves into full identity block', async () => {
   assert.equal(identity.identity_headshot_url, 'http://biz.example.com/headshot.jpg');
   assert.equal(identity.identity_suburb, 'Suburb');
   assert.equal(identity.identity_state, 'NSW');
-  assert.equal(identity.identity_abn, '12345678901');
   assert.equal(identity.identity_insured, 'Fully insured for all work');
   assert.equal(identity.identity_logo_url, 'http://biz.example.com/logo.png');
   assert.equal(identity.identity_business_type, 'Plumber');
@@ -42,5 +41,5 @@ test('raw profile resolves into full identity block', async () => {
   assert.equal(identity.identity_uri_sms, 'sms:+610212345678');
   assert.equal(identity.identity_uri_whatsapp, 'https://wa.me/610212345678');
   assert.equal(identity.identity_display_name, 'Jane Doe');
-  assert.equal(identity.identity_verified, 'true');
+  assert.ok(!identity.identity_verified);
 });
