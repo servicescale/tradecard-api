@@ -21,6 +21,18 @@ test('detResolve handles small typos in keys', () => {
   assert.equal(val, 'Jane Doe');
 });
 
+test('detResolve matches shorter keys when prefixes are omitted', () => {
+  const raw = { phone: '+61234567890' };
+  const val = helpers.detResolve('identity_phone', {}, { raw });
+  assert.equal(val, '+61234567890');
+});
+
+test('detResolve matches social keys without the social_links prefix', () => {
+  const raw = { facebook_url: 'https://facebook.com/example' };
+  const val = helpers.detResolve('social_links_facebook', {}, { raw });
+  assert.equal(val, 'https://facebook.com/example');
+});
+
 test('PHONE_RX accepts international formats', () => {
   assert(det.PHONE_RX.test('+1 (555) 123-4567'));
 });
