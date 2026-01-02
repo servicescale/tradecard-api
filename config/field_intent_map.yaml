@@ -48,7 +48,7 @@ identity_abn:
   tools: [site_scraper]
   fallback: false
   constraints:
-    regex: "^(?:\\d[\\s-]?){11}$"
+    regex: "^\\d{11}$"
 
 identity_insured:
   priority: optional
