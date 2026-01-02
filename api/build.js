@@ -1,7 +1,7 @@
 // /api/build.js
 // Build a TradeCard JSON from crawling a site. Optional WordPress push.
 
-const { crawlSite, buildTradecardFromPages } = require('../lib/build');
+const { crawlSite, buildTradecardFromPages, collectRawFromPages } = require('../lib/build');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
@@ -60,21 +60,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    const raw = {
-      anchors: (pages || [])
-        .flatMap((p) => p.links || [])
-        .map((l) => ({ href: l.href || '', text: l.text || '' })),
-      headings: (pages || [])
-        .flatMap((p) => Object.values(p.headings || {}))
-        .flat()
-        .map((t) => t || ''),
-      images: (pages || [])
-        .flatMap((p) => p.images || [])
-        .map((i) => ({ src: i.url || '', alt: i.alt || '' })),
-      url: startUrl,
-      meta: pages?.[0]?.meta || {},
-      jsonld: pages?.[0]?.jsonld || pages?.[0]?.schema || []
-    };
+    const raw = collectRawFromPages(startUrl, pages);
 
     const intentStart = Date.now();
     const intent = await applyIntent(result.tradecard, { raw, fullFrame, opts: { noLLM } });
