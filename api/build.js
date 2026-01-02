@@ -38,29 +38,41 @@ module.exports = async function handler(req, res) {
     const result = buildTradecardFromPages(startUrl, pages);
     Logger.log('DETECTION', 'Tradecard extracted', { ms: Date.now() - detectStart });
 
+    const raw = collectRawFromPages(startUrl, pages);
+
     const inferStart = Date.now();
-    const inferred = noLLM ? { _meta: { skipped: 'no_llm' } } : await inferTradecard(result.tradecard);
+    const inferred = await inferTradecard({
+      tradecard: result.tradecard,
+      raw,
+      identity: {
+        email: result.tradecard?.contacts?.emails?.[0] || null,
+        phone: result.tradecard?.contacts?.phones?.[0] || null,
+        website: result.tradecard?.contacts?.website || null,
+        state: raw?.identity_state || null,
+        abn: result.tradecard?.identity_abn || null,
+        abn_source: result.tradecard?.identity_abn_source || null
+      },
+      disabled: noLLM
+    });
     trace.push({ stage: 'infer', ...inferred._meta });
     Logger.log('LLM_MERGE', 'Inference completed', { ms: Date.now() - inferStart, meta: inferred._meta });
+    result.profile = inferred.profile;
+    if (inferred.evidence) result.profile_evidence = inferred.evidence;
     if (inferred._meta?.ok) {
-      if (inferred.business?.description) {
-        result.tradecard.business.description = inferred.business.description;
+      const profile = inferred.profile || {};
+      if (profile.identity_business_description) {
+        result.tradecard.business.description = profile.identity_business_description;
       }
-      if (inferred.services?.list) {
-        result.tradecard.services.list = inferred.services.list;
+      if (Array.isArray(profile.identity_services) && profile.identity_services.length) {
+        result.tradecard.services.list = profile.identity_services.map((svc) => ({
+          title: svc.name,
+          description: svc.description ?? null
+        }));
       }
-      if (inferred.service_areas !== undefined) {
-        result.tradecard.service_areas = inferred.service_areas;
-      }
-      if (inferred.brand?.tone) {
-        result.tradecard.brand.tone = inferred.brand.tone;
-      }
-      if (inferred.testimonials !== undefined) {
-        result.tradecard.testimonials = inferred.testimonials;
+      if (Array.isArray(profile.service_areas) && profile.service_areas.length) {
+        result.tradecard.service_areas = profile.service_areas;
       }
     }
-
-    const raw = collectRawFromPages(startUrl, pages);
 
     const intentStart = Date.now();
     const intent = await applyIntent(result.tradecard, { raw, fullFrame, opts: { noLLM } });
