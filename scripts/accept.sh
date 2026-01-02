@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 : "${BASE:?Set BASE, e.g. http://localhost:3000}"
-: "${TARGET:?Set TARGET, e.g. https://poolboysco.com.au}"
+TARGET="${TARGET:-https://poolbarriercertification.com}"
 ACCEPT_MIN_COVERAGE="${ACCEPT_MIN_COVERAGE:-10}"
 TARGET_ENC=$(node -e "process.stdout.write(encodeURIComponent(process.env.TARGET))")
 echo "== Resolve-only must be 200 =="
