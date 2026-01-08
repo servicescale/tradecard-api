@@ -98,6 +98,28 @@ const SPEC = {
           "500": { description: "Internal error" }
         }
       }
+    },
+    "/api/structure": {
+      get: {
+        operationId: "buildStructure",
+        summary: "Build a structured site representation",
+        description: "Crawls the site and returns per-page structure plus overview metrics for downstream assessment.",
+        parameters: [
+          { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" } },
+          { name: "maxPages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 12 } },
+          { name: "maxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 5, default: 2 } },
+          { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 } },
+          { name: "includeSitemap", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "When 1, seed the crawl with URLs from /sitemap.xml (same-origin only)" }
+        ],
+        responses: {
+          "200": {
+            description: "Structured site representation",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/StructureResponse" } } }
+          },
+          "400": { description: "Bad request" },
+          "500": { description: "Internal error" }
+        }
+      }
     }
   },
   components: {
@@ -277,6 +299,123 @@ const SPEC = {
           }
         },
         required: ["site","tradecard","provenance","needs_inference"]
+      },
+      HeadingCounts: {
+        type: "object",
+        properties: {
+          h1: { type: "integer" },
+          h2: { type: "integer" },
+          h3: { type: "integer" },
+          h4: { type: "integer" },
+          h5: { type: "integer" },
+          h6: { type: "integer" }
+        }
+      },
+      LinkCounts: {
+        type: "object",
+        properties: {
+          internal: { type: "integer" },
+          external: { type: "integer" },
+          mailto: { type: "integer" },
+          tel: { type: "integer" },
+          sms: { type: "integer" },
+          whatsapp: { type: "integer" }
+        }
+      },
+      CtaLink: {
+        type: "object",
+        properties: {
+          label: { type: "string", nullable: true },
+          title: { type: "string", nullable: true },
+          href: { type: "string", format: "uri", nullable: true }
+        }
+      },
+      StructuredPage: {
+        type: "object",
+        properties: {
+          url: { type: "string", format: "uri" },
+          title: { type: "string", nullable: true },
+          page_language: { type: "string", nullable: true },
+          meta_description: { type: "string", nullable: true },
+          headings: { type: "object" },
+          heading_counts: { $ref: "#/components/schemas/HeadingCounts" },
+          word_count: { type: "integer" },
+          character_count: { type: "integer" },
+          text_blocks: { type: "array", items: { type: "string" } },
+          layout_blocks: { type: "array", items: { $ref: "#/components/schemas/LayoutBlock" } },
+          images: { type: "array", items: { $ref: "#/components/schemas/Image" } },
+          image_count: { type: "integer" },
+          first_image_url: { type: "string", format: "uri", nullable: true },
+          link_counts: { $ref: "#/components/schemas/LinkCounts" },
+          ctas: {
+            type: "object",
+            properties: {
+              anchors: { type: "array", items: { $ref: "#/components/schemas/CtaLink" } },
+              service_panels: { type: "array", items: { $ref: "#/components/schemas/CtaLink" } },
+              projects: { type: "array", items: { $ref: "#/components/schemas/CtaLink" } },
+              contact_forms: { type: "array", items: { type: "string", format: "uri" } },
+              total: { type: "integer" }
+            }
+          },
+          social: { type: "array", items: { $ref: "#/components/schemas/SocialLink" } },
+          contacts: { $ref: "#/components/schemas/Contacts" }
+        },
+        required: ["url"]
+      },
+      LayoutBlock: {
+        type: "object",
+        properties: {
+          order: { type: "integer" },
+          tag: { type: "string" },
+          selector: { type: "string", nullable: true },
+          role: { type: "string", nullable: true },
+          aria_label: { type: "string", nullable: true },
+          text_sample: { type: "string", nullable: true },
+          headings: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                level: { type: "string" },
+                text: { type: "string" }
+              }
+            }
+          },
+          image_count: { type: "integer" },
+          images: { type: "array", items: { type: "string", format: "uri" } },
+          link_count: { type: "integer" },
+          links: { type: "array", items: { type: "string", format: "uri" } },
+          paragraph_count: { type: "integer" },
+          list_count: { type: "integer" },
+          form_count: { type: "integer" },
+          button_count: { type: "integer" }
+        }
+      },
+      StructureOverview: {
+        type: "object",
+        properties: {
+          pages_count: { type: "integer" },
+          totals: { type: "object" },
+          averages: { type: "object" },
+          languages: { type: "array", items: { type: "string" } }
+        }
+      },
+      StructureResponse: {
+        type: "object",
+        properties: {
+          site: {
+            type: "object",
+            properties: {
+              url: { type: "string", format: "uri" },
+              domain: { type: "string", nullable: true },
+              crawled_at: { type: "string", format: "date-time" },
+              pages_count: { type: "integer" }
+            }
+          },
+          overview: { $ref: "#/components/schemas/StructureOverview" },
+          pages: { type: "array", items: { $ref: "#/components/schemas/StructuredPage" } }
+        },
+        required: ["site","overview","pages"]
       }
     }
   }
