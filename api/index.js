@@ -8,8 +8,8 @@ module.exports = async function handler(req, res) {
       '/api/scrape',
       '/api/crawl',
       '/api/build',
+      '/api/structure',
       '/api/openapi.json'
     ]
   });
 };
-
