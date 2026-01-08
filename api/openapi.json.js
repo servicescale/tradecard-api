@@ -62,7 +62,8 @@ const SPEC = {
           { name: "url", in: "query", required: true, schema: { type: "string", format: "uri" } },
           { name: "maxPages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 10 } },
           { name: "maxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 5, default: 2 } },
-          { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "1 = restrict to same origin; 0 = allow externals" }
+          { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "1 = restrict to same origin; 0 = allow externals" },
+          { name: "includeSitemap", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "When 1, seed the crawl with URLs from /sitemap.xml (same-origin only)" }
         ],
         responses: {
           "200": {
@@ -83,6 +84,7 @@ const SPEC = {
           { name: "maxPages", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 12 } },
           { name: "maxDepth", in: "query", required: false, schema: { type: "integer", minimum: 0, maximum: 5, default: 2 } },
           { name: "sameOrigin", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 } },
+          { name: "includeSitemap", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "When 1, seed the crawl with URLs from /sitemap.xml (same-origin only)" },
           { name: "save", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 1 }, description: "If BOSTONOS_API_TOKEN is set, save to BostonOS when save=1" },
           { name: "push", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 0 }, description: "When 1 and WP_BASE/WP_BEARER are set, push TradeCard to WordPress" },
           { name: "debug", in: "query", required: false, schema: { type: "integer", enum: [0,1], default: 0 }, description: "When 1, include debug.trace with stage timings" }
@@ -176,7 +178,8 @@ const SPEC = {
               returned: { type: "integer" },
               maxPages: { type: "integer" },
               maxDepth: { type: "integer" },
-              sameOriginOnly: { type: "boolean" }
+              sameOriginOnly: { type: "boolean" },
+              includeSitemap: { type: "boolean" }
             }
           },
           errors: { type: "array", items: { type: "string" } }
