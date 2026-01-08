@@ -1,7 +1,7 @@
 // /api/build.js
 // Build a TradeCard JSON from crawling a site. Optional WordPress push.
 
-const { crawlSite, buildTradecardFromPages, collectRawFromPages } = require('../lib/build');
+const { crawlSite, buildTradecardFromPages, buildAuditSnapshot, collectRawFromPages } = require('../lib/build');
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
@@ -40,6 +40,7 @@ module.exports = async function handler(req, res) {
     Logger.log('DETECTION', 'Tradecard extracted', { ms: Date.now() - detectStart });
 
     const raw = collectRawFromPages(startUrl, pages);
+    result.audit = buildAuditSnapshot(startUrl, pages, { raw });
 
     const inferStart = Date.now();
     const inferred = await inferTradecard({
