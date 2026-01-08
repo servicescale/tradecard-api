@@ -5,7 +5,7 @@ const { crawlSite, buildTradecardFromPages, buildAuditSnapshot, collectRawFromPa
 const { createPost, uploadFromUrl, acfSync } = require('../lib/wp');
 const { applyIntent } = require('../lib/intent');
 const { inferTradecard } = require('../lib/infer');
-const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acfContract");
+const { getAllowKeys, hasACFKey, getAliases } = require("../lib/acf_contract");
 const { loadMap, enforcePolicy } = require("../lib/policy");
 const { computeCoverage } = require('../lib/coverage');
 const { resolveGate, publishGate } = require('../lib/gates');
@@ -116,7 +116,7 @@ module.exports = async function handler(req, res) {
     const guardPush = pushParam === '1' || pushParam === 1;
     const min = Number(process.env.MIN_ACF_KEYS)||10;
 
-    const allow = new Set(getAllowKeys());
+    const allow = getAllowKeys();
     const required = Object.keys(map).filter((k) => map[k]?.priority === 'required' && allow.has(k));
     const coverage = computeCoverage(clean, allow);
     const requiredMissing = required.filter((k) => !clean[k]);
