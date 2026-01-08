@@ -1,7 +1,7 @@
 // /api/crawl.js
 // BFS same-origin crawler that reuses scrapePage().
 
-const { scrapePage } = require('../lib/scrape');
+const { crawlSite } = require('../lib/build');
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 
 module.exports = async function handler(req, res) {
@@ -17,6 +17,7 @@ module.exports = async function handler(req, res) {
   const maxPages = Math.min(parseInt(req.query?.maxPages || '10', 10) || 10, 50);
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
+  const includeSitemap = (req.query?.includeSitemap ?? '1') !== '0';
 
   if (!startUrl) return res.status(400).json({ error: 'Missing ?url=' });
 
@@ -29,43 +30,20 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid URL (http/https only)' });
   }
 
+  let pages = [];
   const errors = [];
-  const queue = [[startUrl, 0]];
-  const visited = new Set();
-  const pages = [];
-
-  while (queue.length && pages.length < maxPages) {
-    const [url, depth] = queue.shift();
-    if (visited.has(url)) continue;
-    visited.add(url);
-
-    try {
-      const { page } = await scrapePage(url);
-      pages.push(page);
-
-      if (depth < maxDepth) {
-        const nextLinks = (page.links || []).filter((href) => {
-          if (!href) return false;
-          if (sameOriginOnly && !href.startsWith(origin)) return false;
-          if (href.includes('#')) return false;
-          return true;
-        });
-        for (const href of nextLinks) {
-          if (pages.length + queue.length >= maxPages) break;
-          if (!visited.has(href)) queue.push([href, depth + 1]);
-        }
-      }
-    } catch (err) {
-      const msg = `Failed to scrape ${url}: ${err.message || String(err)}`;
-      console.warn(msg);
-      errors.push(msg);
-    }
+  try {
+    pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly, includeSitemap });
+  } catch (err) {
+    const msg = `Failed to crawl ${startUrl}: ${err.message || String(err)}`;
+    console.warn(msg);
+    errors.push(msg);
   }
 
   const result = {
     site: startUrl,
     pages,
-    stats: { visited: visited.size, returned: pages.length, maxPages, maxDepth, sameOriginOnly },
+    stats: { visited: pages.length, returned: pages.length, maxPages, maxDepth, sameOriginOnly, includeSitemap },
     errors
   };
 

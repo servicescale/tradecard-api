@@ -19,6 +19,7 @@ module.exports = async function handler(req, res) {
   const maxPages = Math.min(parseInt(req.query?.maxPages || '12', 10) || 12, 50);
   const maxDepth = Math.min(parseInt(req.query?.maxDepth || '2', 10) || 2, 5);
   const sameOriginOnly = (req.query?.sameOrigin ?? '1') !== '0';
+  const includeSitemap = (req.query?.includeSitemap ?? '1') !== '0';
   const fullFrame = ['1', 'true', 1, true].includes(req.query.full_frame);
   const noLLM = ['1', 'true', 1, true].includes(req.query.no_llm);
   const debugMode = ['1', 'true', 1, true].includes(req.query?.debug);
@@ -30,7 +31,7 @@ module.exports = async function handler(req, res) {
   try {
     Logger.log('BUILD', 'Build started', { url: startUrl, maxPages, maxDepth });
     const t0 = Date.now();
-    const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly });
+    const pages = await crawlSite(startUrl, { maxPages, maxDepth, sameOriginOnly, includeSitemap });
     const crawlMs = Date.now() - t0;
     trace.push({ stage: 'crawl', ms: crawlMs });
     Logger.log('CRAWL', 'Crawl completed', { pages: pages.length, ms: crawlMs });
